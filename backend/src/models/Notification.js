@@ -1,4 +1,7 @@
-{
+// src/models/Notififcation.js
+const mongoose = require('mongoose');
+
+const notificationSchema = new mongoose.Schema({
   _id: ObjectId,
   userId: ObjectId,              // recipient
   schoolId: ObjectId,
@@ -10,4 +13,6 @@
   read: { type: Boolean, default: false },
   metadata: Object,              // e.g. { studentId, amount, reference }
   createdAt: Date
-}
+},{ timestamps: true });
+
+module.exports = mongoose.models.School || mongoose.model('Notificataion', notificationSchema);

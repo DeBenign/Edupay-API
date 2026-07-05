@@ -6,30 +6,30 @@ const { env } = require('./env');
 let accessToken    = null;
 let tokenExpiresAt = null;
 
-// ─── Build signed JWT using secret key AS-IS (no base64 decode) ──────────────
+// ─── Build signed JWT for Nomba auth ────────────────────────────────────────
+// secretKey used RAW as HMAC secret — no base64 decode
 const buildClientAssertion = () => {
   const now = Math.floor(Date.now() / 1000);
-
   return jwt.sign(
     {
       iss: env.nomba.clientId,
       sub: env.nomba.clientId,
-      aud: env.nomba.baseUrl,
+      aud: env.nomba.baseUrl,   // https://sandbox.nomba.com
       iat: now,
       exp: now + 300,
     },
-    env.nomba.secretKey,   // ← raw string, NOT Buffer.from(..., 'base64')
+    env.nomba.secretKey,        // raw string, NOT Buffer.from(..., 'base64')
     { algorithm: 'HS512' }
   );
 };
 
-// ─── Fetch Nomba access token ─────────────────────────────────────────────────
+// ─── Fetch access token ──────────────────────────────────────────────────────
 const fetchNombaToken = async () => {
   try {
     const clientAssertion = buildClientAssertion();
 
     const response = await axios.post(
-      `${env.nomba.baseUrl}/auth/token/issue`,
+      `${env.nomba.baseUrl}/v1/auth/token/issue`,
       {
         clientId:              env.nomba.clientId,
         grant_type:            'client_credentials',
@@ -40,6 +40,7 @@ const fetchNombaToken = async () => {
         headers: {
           Authorization:  `Bearer ${clientAssertion}`,
           'Content-Type': 'application/json',
+          accountId:      env.nomba.accountId,
         },
         timeout: 15000,
       }
@@ -47,8 +48,7 @@ const fetchNombaToken = async () => {
 
     const payload      = response.data?.data || response.data;
     accessToken        = payload.access_token;
-    const expiresIn    = payload.expires_in || 3600;
-    tokenExpiresAt     = Date.now() + (expiresIn - 60) * 1000;
+    tokenExpiresAt     = Date.now() + ((payload.expires_in || 3600) - 60) * 1000;
 
     console.log('✅ Nomba access token refreshed');
     return accessToken;
@@ -59,7 +59,7 @@ const fetchNombaToken = async () => {
   }
 };
 
-// ─── Get valid token, refresh if expired ─────────────────────────────────────
+// ─── Get valid token (auto-refresh) ─────────────────────────────────────────
 const getNombaToken = async () => {
   if (!accessToken || Date.now() >= tokenExpiresAt) {
     await fetchNombaToken();
@@ -67,30 +67,32 @@ const getNombaToken = async () => {
   return accessToken;
 };
 
-// ─── Nomba API request wrapper ───────────────────────────────────────────────
-const nombaRequest = async (method, endpoint, data = null, params = null) => {
-  const makeClient = (token) => axios.create({
-    baseURL: env.nomba.baseUrl,
+// ─── Axios client factory ────────────────────────────────────────────────────
+// version: 'v1' for most endpoints, 'v2' for transfers
+const makeClient = (token, version = 'v1') =>
+  axios.create({
+    baseURL: `${env.nomba.baseUrl}/${version}`,
     headers: {
       Authorization:  `Bearer ${token}`,
       'Content-Type': 'application/json',
       accountId:      env.nomba.accountId,
-      subAccountId:   env.nomba.subAccountId,
     },
     timeout: 15000,
   });
 
+// ─── Universal request wrapper ───────────────────────────────────────────────
+const nombaRequest = async (method, endpoint, data = null, params = null, version = 'v1') => {
   try {
     const token    = await getNombaToken();
-    const response = await makeClient(token)({ method, url: endpoint, data, params });
+    const response = await makeClient(token, version)({ method, url: endpoint, data, params });
     return response.data;
   } catch (error) {
     if (error.response?.status === 401) {
-      console.warn('⚠️  Nomba 401 — refreshing token and retrying...');
+      console.warn('⚠️  Nomba 401 — force-refreshing token and retrying...');
       accessToken    = null;
       tokenExpiresAt = null;
       const token    = await getNombaToken();
-      const response = await makeClient(token)({ method, url: endpoint, data, params });
+      const response = await makeClient(token, version)({ method, url: endpoint, data, params });
       return response.data;
     }
     const msg = error.response?.data?.description
