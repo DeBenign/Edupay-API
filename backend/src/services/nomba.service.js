@@ -5,6 +5,7 @@
 
 const { nombaRequest } = require('../config/nomba');
 const { env }          = require('../config/env');
+const { normalizeVirtualAccount } = require("./nomba.mapper");
 
 // ─── VIRTUAL ACCOUNTS ────────────────────────────────────────────────────────
 
@@ -24,13 +25,6 @@ console.dir(response, { depth: null });
 return response.data || response;
 };
 
-function sanitizeAccountName(name) {
-  return name
-    .replace(/[^a-zA-Z0-9 ]/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
 // POST /v1/accounts/virtual/list
 const listVirtualAccounts = async (params = {}) => {
   const response = await nombaRequest('post', '/accounts/virtual/list', {
@@ -38,6 +32,32 @@ const listVirtualAccounts = async (params = {}) => {
     ...params,
   });
   return response.data;
+};
+
+const getVirtualAccountByReference = async (accountRef) => {
+  const accounts = await listVirtualAccounts();
+
+  console.log("========== LIST VIRTUAL ACCOUNTS ==========");
+  console.dir(accounts, { depth: null });
+
+  const records =
+    accounts?.results ||
+    accounts?.records ||
+    accounts?.items ||
+    accounts?.data ||
+    [];
+
+  const account = records.find(
+    (item) => item.accountRef === accountRef
+  );
+
+  if (!account) {
+    throw new Error(
+      `Virtual account with reference ${accountRef} not found`
+    );
+  }
+
+  return normalizeVirtualAccount(account);
 };
 
 // GET /v1/accounts/virtual/{identifier}
@@ -135,6 +155,7 @@ const verifyTransfer = async (sessionId) => {
 module.exports = {
   createVirtualAccount,
   listVirtualAccounts,
+  getVirtualAccountByReference,
   getVirtualAccount,
   deleteVirtualAccount,
   getSubAccountBalance,

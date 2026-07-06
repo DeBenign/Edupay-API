@@ -1,33 +1,16 @@
-const normalizeVirtualAccount = (response) => {
+// src/services/nomba.mapper.js
 
-    const va = response.data;
+const normalizeVirtualAccount = (va) => ({
+    accountNumber: va.bankAccountNumber,
+    accountName: va.bankAccountName,
+    bankName: va.bankName,
+    bankCode: va.bankCode || null,
 
-    return {
+    accountRef: va.accountRef,
+    accountHolderId: va.accountHolderId,
 
-        accountNumber:
-            va.bankAccountNumber,
-
-        accountName:
-            va.bankAccountName,
-
-        bankName:
-            va.bankName,
-
-        bankCode:
-            va.bankCode || null,
-
-        accountRef:
-            va.accountRef,
-
-        accountHolderId:
-            va.accountHolderId,
-
-        createdAt:
-            va.createdAt,
-
-    };
-
-};
+    provisionedAt: new Date(va.createdAt),
+});
 
 module.exports = {
     normalizeVirtualAccount,

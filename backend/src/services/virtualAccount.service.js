@@ -1,21 +1,8 @@
 // src/services/virtualAccount.service.js
 const Student = require('../models/Student');
-const { createVirtualAccount } = require('./nomba.service');
+const { createVirtualAccount, getVirtualAccountByReference } = require('./nomba.service');
 const { normalizeVirtualAccount} = require("./nomba.mapper");
-const {sanitizeAccountName, sanitizeReference,
-} = require("../utils/nombaFormatter");
-
-const mapNombaVirtualAccount = (va) => ({
-  accountNumber: va.bankAccountNumber,
-  accountName: va.bankAccountName,
-  bankName: va.bankName,
-  bankCode: va.bankCode || null,
-
-  accountRef: va.accountRef,
-  accountHolderId: va.accountHolderId,
-
-  provisionedAt: new Date(va.createdAt),
-});
+const {sanitizeAccountName, sanitizeReference, } = require("../utils/nombaFormatter");
 
 const saveVirtualAccount = async (student, nombaAccount) => {
 
@@ -48,7 +35,7 @@ const provisionStudentVirtualAccount = async (student) => {
             accountName: sanitizeAccountName(
                 `${student.fullName} School Fees`
             ),
-            reference: student._id.toString(),
+            reference: sanitizeReference(student._id.toString()),
         });
 
         return await saveVirtualAccount(student, nombaAccount);
