@@ -11,10 +11,25 @@ const { env }          = require('../config/env');
 // POST /v1/accounts/virtual/{subAccountId}
 const createVirtualAccount = async ({ accountName, reference, bvn }) => {
   const sub      = env.nomba.subAccountId;
-  const payload  = { accountName, reference, ...(bvn && { bvn }) };
-  const response = await nombaRequest('post', `/accounts/virtual/${sub}`, payload);
-  return response.data;
+  const payload  = { accountName, accountRef: reference, ...(bvn && { bvn }) };
+  const response = await nombaRequest(
+  "post",
+  `/accounts/virtual/${sub}`,
+  payload
+);
+
+console.log("========== RAW NOMBA RESPONSE ==========");
+console.dir(response, { depth: null });
+
+return response.data || response;
 };
+
+function sanitizeAccountName(name) {
+  return name
+    .replace(/[^a-zA-Z0-9 ]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
 
 // POST /v1/accounts/virtual/list
 const listVirtualAccounts = async (params = {}) => {
@@ -28,7 +43,7 @@ const listVirtualAccounts = async (params = {}) => {
 // GET /v1/accounts/virtual/{identifier}
 const getVirtualAccount = async (identifier) => {
   const response = await nombaRequest('get', `/accounts/virtual/${identifier}`);
-  return response.data;
+  return normalizeVirtualAccount(response.data);
 };
 
 // DELETE /v1/accounts/virtual/{identifier}

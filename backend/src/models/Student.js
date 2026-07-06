@@ -6,9 +6,11 @@ const virtualAccountSchema = new mongoose.Schema({
   accountName:    { type: String, default: null },
   bankName:       { type: String, default: null },
   bankCode:       { type: String, default: null },
-  nombaReference: { type: String, default: null },
-  provisionedAt:  { type: Date,   default: null },
+  accountHolderId:{ type: String, default: null },
+  accountRef:     { type: String, default: null },
+  provisionedAt:  { type: Date, default: null },
 }, { _id: false });
+
 
 const studentSchema = new mongoose.Schema({
   schoolId:       { type: mongoose.Schema.Types.ObjectId, ref: 'School', required: true },

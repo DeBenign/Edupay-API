@@ -1,46 +1,25 @@
 // src/config/nomba.js
+
 const axios = require('axios');
-const jwt   = require('jsonwebtoken');
 const { env } = require('./env');
 
 let accessToken    = null;
 let tokenExpiresAt = null;
 
-// ─── Build signed JWT for Nomba auth ────────────────────────────────────────
-// secretKey used RAW as HMAC secret — no base64 decode
-const buildClientAssertion = () => {
-  const now = Math.floor(Date.now() / 1000);
-  return jwt.sign(
-    {
-      iss: env.nomba.clientId,
-      sub: env.nomba.clientId,
-      aud: env.nomba.baseUrl,   // https://sandbox.nomba.com
-      iat: now,
-      exp: now + 300,
-    },
-    env.nomba.secretKey,        // raw string, NOT Buffer.from(..., 'base64')
-    { algorithm: 'HS512' }
-  );
-};
-
-// ─── Fetch access token ──────────────────────────────────────────────────────
+// ─── Fetch Nomba access token ─────────────────────────────────────────────────
 const fetchNombaToken = async () => {
   try {
-    const clientAssertion = buildClientAssertion();
-
     const response = await axios.post(
       `${env.nomba.baseUrl}/v1/auth/token/issue`,
       {
-        clientId:              env.nomba.clientId,
-        grant_type:            'client_credentials',
-        client_assertion_type: 'urn:ietf:params:oauth:client-assertion-type:jwt-bearer',
-        client_assertion:      clientAssertion,
+        clientId:     env.nomba.clientId,
+        clientSecret: env.nomba.secretKey,   // secretKey used as clientSecret in body
+        grant_type:   'client_credentials',
       },
       {
         headers: {
-          Authorization:  `Bearer ${clientAssertion}`,
           'Content-Type': 'application/json',
-          accountId:      env.nomba.accountId,
+          accountId:      env.nomba.accountId, // parent account ID in header
         },
         timeout: 15000,
       }
@@ -59,7 +38,7 @@ const fetchNombaToken = async () => {
   }
 };
 
-// ─── Get valid token (auto-refresh) ─────────────────────────────────────────
+// ─── Get valid token (auto-refresh when expired) ──────────────────────────────
 const getNombaToken = async () => {
   if (!accessToken || Date.now() >= tokenExpiresAt) {
     await fetchNombaToken();
@@ -67,7 +46,7 @@ const getNombaToken = async () => {
   return accessToken;
 };
 
-// ─── Axios client factory ────────────────────────────────────────────────────
+// ─── Axios client factory ─────────────────────────────────────────────────────
 // version: 'v1' for most endpoints, 'v2' for transfers
 const makeClient = (token, version = 'v1') =>
   axios.create({
@@ -80,13 +59,14 @@ const makeClient = (token, version = 'v1') =>
     timeout: 15000,
   });
 
-// ─── Universal request wrapper ───────────────────────────────────────────────
+// ─── Universal Nomba request wrapper ──────────────────────────────────────────
 const nombaRequest = async (method, endpoint, data = null, params = null, version = 'v1') => {
   try {
     const token    = await getNombaToken();
     const response = await makeClient(token, version)({ method, url: endpoint, data, params });
     return response.data;
   } catch (error) {
+    // Force token refresh on 401 and retry once
     if (error.response?.status === 401) {
       console.warn('⚠️  Nomba 401 — force-refreshing token and retrying...');
       accessToken    = null;

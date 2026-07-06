@@ -1,39 +1,77 @@
 // src/services/virtualAccount.service.js
 const Student = require('../models/Student');
 const { createVirtualAccount } = require('./nomba.service');
+const { normalizeVirtualAccount} = require("./nomba.mapper");
+const {sanitizeAccountName, sanitizeReference,
+} = require("../utils/nombaFormatter");
 
-const provisionStudentVirtualAccount = async (student) => {
-  if (student.virtualAccount?.accountNumber) {
-    console.log(`ℹ️  Student ${student.studentId} already has account: ${student.virtualAccount.accountNumber}`);
-    return student;
-  }
-  try {
-    const nombaAccount = await createVirtualAccount({
-      accountName: `${student.fullName} - School Fees`,
-      reference:   student._id.toString(),
-    });
+const mapNombaVirtualAccount = (va) => ({
+  accountNumber: va.bankAccountNumber,
+  accountName: va.bankAccountName,
+  bankName: va.bankName,
+  bankCode: va.bankCode || null,
 
-    const updatedStudent = await Student.findByIdAndUpdate(
-      student._id,
-      {
-        virtualAccount: {
-          accountNumber:  nombaAccount.accountNumber,
-          accountName:    nombaAccount.accountName,
-          bankName:       nombaAccount.bankName,
-          bankCode:       nombaAccount.bankCode,
-          nombaReference: nombaAccount.reference || nombaAccount.id,
-          provisionedAt:  new Date(),
+  accountRef: va.accountRef,
+  accountHolderId: va.accountHolderId,
+
+  provisionedAt: new Date(va.createdAt),
+});
+
+const saveVirtualAccount = async (student, nombaAccount) => {
+
+    const virtualAccount =
+        normalizeVirtualAccount(nombaAccount);
+
+    return Student.findByIdAndUpdate(
+        student._id,
+        {
+            virtualAccount
         },
-      },
-      { new: true }
+        {
+            returnDocument: "after"
+        }
     );
 
-    console.log(`✅ Virtual account provisioned for ${student.studentId}: ${nombaAccount.accountNumber}`);
-    return updatedStudent;
-  } catch (err) {
-    console.error(`❌ Virtual account provisioning failed for ${student.studentId}:`, err.message);
-    throw new Error(`Virtual account provisioning failed: ${err.message}`);
-  }
+};
+
+
+const provisionStudentVirtualAccount = async (student) => {
+
+    if (student.virtualAccount?.accountNumber) {
+        return student;
+    }
+
+    try {
+
+        const nombaAccount = await createVirtualAccount({
+
+            accountName: sanitizeAccountName(
+                `${student.fullName} School Fees`
+            ),
+            reference: student._id.toString(),
+        });
+
+        return await saveVirtualAccount(student, nombaAccount);
+    }
+    catch (err) {
+        if (
+            err.message.includes("same accountRef already exists")
+        ) {
+            console.log(
+                "Account already exists on Nomba."
+            );
+            const existing =
+                await getVirtualAccountByReference(
+                    student._id.toString()
+                );
+            return await saveVirtualAccount(
+                student,
+                existing
+            );
+        }
+        throw err;
+    }
+
 };
 
 const retryVirtualAccountProvisioning = async (studentId) => {
@@ -47,4 +85,5 @@ const findStudentByAccountNumber = async (accountNumber) => {
   return Student.findOne({ 'virtualAccount.accountNumber': accountNumber, isActive: true });
 };
 
-module.exports = { provisionStudentVirtualAccount, retryVirtualAccountProvisioning, findStudentByAccountNumber };
+
+module.exports = {  saveVirtualAccount, provisionStudentVirtualAccount, retryVirtualAccountProvisioning, findStudentByAccountNumber };

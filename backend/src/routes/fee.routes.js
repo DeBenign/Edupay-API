@@ -10,9 +10,9 @@ const { authorize } = require('../middleware/role.middleware');
 const staff = authorize('admin','bursar');
 const admin = authorize('admin');
 
-router.post('/structures',            protect, admin, createFeeStructure);
-router.get('/structures',             protect, staff, getFeeStructures);
-router.get('/structures/:id',         protect, staff, getFeeStructure);
+router.post('/structures', protect, admin, createFeeStructure);
+router.get('/structures', protect, staff, getFeeStructures);
+router.get('/structures/:id', protect, staff, getFeeStructure);
 router.patch('/structures/:id',       protect, admin, updateFeeStructure);
 router.post('/assign',                protect, staff, assignFeeToStudent);
 router.post('/assign-class',          protect, staff, assignFeeToClass);

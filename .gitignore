@@ -1,0 +1,13 @@
+node_modules/
+dist/
+coverage/
+.env
+build/
+.env.development
+.env.production
+.cache/
+.eslintcache
+.vite/
+*.tmp
+*.temp
+*.log
