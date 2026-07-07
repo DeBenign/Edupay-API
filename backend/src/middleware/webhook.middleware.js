@@ -13,13 +13,24 @@ const captureRawBody = (req, res, next) => {
   });
 };
 
-const verifyWebhookSignature = (req, res, next) => {
-  // In development, skip signature check so you can test manually
+const verifyWebhookSignature = async (req, res, next) => {
   if (env.nodeEnv === 'development') return next();
 
   const signature = req.headers['x-nomba-signature'];
+
+  // Log every attempt — success or fail — so we can see what's happening
+  const { WebhookLog } = require('../models/WebhookLog');
+
   if (!signature) {
-    console.warn('⚠️  Webhook received without signature');
+    console.warn('⚠️  Webhook received without signature. Headers:', JSON.stringify(req.headers));
+    await WebhookLog.create({
+      event: 'signature_verification_failed',
+      payload: req.body,
+      signature: null,
+      verified: false,
+      processed: false,
+      processingError: `Missing signature header. Headers received: ${Object.keys(req.headers).join(', ')}`,
+    }).catch(() => {});
     return unauthorized(res, 'Missing webhook signature');
   }
 
@@ -30,13 +41,22 @@ const verifyWebhookSignature = (req, res, next) => {
       .digest('hex');
 
     const sigBuf = Buffer.from(signature, 'hex');
-    const expBuf = Buffer.from(expected,  'hex');
+    const expBuf = Buffer.from(expected, 'hex');
 
     if (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) {
-      console.warn('⚠️  Webhook signature mismatch');
+      console.warn('⚠️  Webhook signature mismatch. Expected:', expected, 'Got:', signature);
+      await WebhookLog.create({
+        event: 'signature_mismatch',
+        payload: req.body,
+        signature,
+        verified: false,
+        processed: false,
+        processingError: 'Signature mismatch',
+      }).catch(() => {});
       return unauthorized(res, 'Invalid webhook signature');
     }
-  } catch {
+  } catch (err) {
+    console.warn('⚠️  Signature verification threw:', err.message);
     return unauthorized(res, 'Signature verification failed');
   }
 
