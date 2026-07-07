@@ -11,5 +11,9 @@ router.post('/nomba', handleNombaWebhook);
 // Protected — admin/bursar only
 router.get('/logs',        protect, authorize('admin', 'bursar'), getWebhookLogs);
 router.post('/replay/:id', protect, authorize('admin'),           replayWebhook);
-
+router.post('/debug/sync-now', protect, authorize('admin'), async (req, res) => {
+  const { syncTransactions } = require('../services/transaction.service');
+  const result = await syncTransactions(null);
+  res.json(result);
+});
 module.exports = router;

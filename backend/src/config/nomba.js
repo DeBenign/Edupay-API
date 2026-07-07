@@ -75,11 +75,15 @@ const nombaRequest = async (method, endpoint, data = null, params = null, versio
       const response = await makeClient(token, version)({ method, url: endpoint, data, params });
       return response.data;
     }
-    const msg = error.response?.data?.description
-             || error.response?.data?.message
-             || error.message;
-    console.error(`❌ Nomba API error [${method.toUpperCase()} ${endpoint}]:`, msg);
-    throw new Error(`Nomba API error: ${msg}`);
+    console.error(`❌ Nomba API error [${method.toUpperCase()} ${endpoint}]`, {
+    status: error.response?.status,
+    data:   error.response?.data,
+    sentParams: params,
+  });
+  const msg = error.response?.data?.description
+           || error.response?.data?.message
+           || error.message;
+  throw new Error(`Nomba API error: ${msg}`);
   }
 };
 
