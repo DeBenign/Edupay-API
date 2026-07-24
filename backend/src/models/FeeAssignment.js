@@ -12,6 +12,9 @@ const feeAssignmentSchema = new mongoose.Schema({
   status:         { type: String, enum: ['unpaid','partial','paid','overpaid'], default: 'unpaid' },
   lastPaymentAt:  { type: Date,   default: null },
   notes:          { type: String, default: null },
+  // Task 2iii — set once an early full-payment discount has been applied
+  discountApplied: { type: Boolean, default: false },
+  discountAmount:  { type: Number, default: 0 },
 }, { timestamps: true });
 
 feeAssignmentSchema.index({ studentId: 1, feeStructureId: 1 }, { unique: true });

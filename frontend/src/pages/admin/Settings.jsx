@@ -5,7 +5,7 @@ import { useAuth } from '../../context/AuthContext'
 import { Alert, Spinner, Field } from '../../components/ui'
 import { Toast } from '../../components/ui'
 import { useToast } from '../../hooks/useToast'
-import { Building2, Lock } from 'lucide-react'
+import { Building2, Lock, CreditCard } from 'lucide-react'
 import { ENV_NAME, BASE_URL } from '../../api/axios'
 
 export default function AdminSettings() {
@@ -16,6 +16,8 @@ export default function AdminSettings() {
   const [saving,  setSaving]  = useState(false)
   const [err,     setErr]     = useState('')
   const [form,    setForm]    = useState({ name: '', address: '', email: '', phone: '' })
+  const [gateway, setGateway] = useState('nomba')
+  const [gwSaving,setGwSaving]= useState(false)
   const [pwForm,  setPwForm]  = useState({ currentPassword: '', newPassword: '', confirmPassword: '' })
   const [pwErr,   setPwErr]   = useState('')
   const [pwSaving,setPwSaving]= useState(false)
@@ -26,6 +28,7 @@ export default function AdminSettings() {
         const s = res.data.data.school
         setSchool(s)
         setForm({ name: s.name, address: s.address, email: s.email, phone: s.phone || '' })
+        setGateway(s.paymentGateway || 'nomba')
       })
       .catch(() => {})
       .finally(() => setLoading(false))
@@ -46,6 +49,22 @@ export default function AdminSettings() {
     } catch (er) {
       setErr(er.response?.data?.message || 'Failed to save school')
     } finally { setSaving(false) }
+  }
+
+  const handleGatewaySave = async (nextGateway) => {
+    if (!school || nextGateway === gateway) return
+    const previous = gateway
+    setGateway(nextGateway) // optimistic
+    setGwSaving(true)
+    try {
+      await schoolAPI.update(school._id, { paymentGateway: nextGateway })
+      toast(`New students will now provision on ${nextGateway === 'paystack' ? 'Paystack' : 'Nomba'}`)
+    } catch (er) {
+      setGateway(previous) // revert on failure
+      toast(er.response?.data?.message || 'Failed to update payment gateway', 'error')
+    } finally {
+      setGwSaving(false)
+    }
   }
 
   const handlePwChange = async (e) => {
@@ -115,6 +134,42 @@ export default function AdminSettings() {
           </div>
         </form>
       </div>
+
+      {/* Payment gateway */}
+      {school && (
+        <div className="card p-6">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-9 h-9 bg-emerald-50 rounded-lg flex items-center justify-center">
+              <CreditCard size={18} className="text-emerald-600" />
+            </div>
+            <h2 className="font-semibold text-gray-900">Payment Gateway</h2>
+          </div>
+          <p className="text-sm text-gray-500 mb-5">
+            Which gateway new students are provisioned on. Existing students keep the account they already have.
+          </p>
+
+          <div className="grid grid-cols-2 gap-3">
+            {[
+              { value: 'nomba',    label: 'Nomba' },
+              { value: 'paystack', label: 'Paystack' },
+            ].map(opt => (
+              <button
+                key={opt.value}
+                type="button"
+                disabled={gwSaving}
+                onClick={() => handleGatewaySave(opt.value)}
+                className={`flex items-center justify-between px-4 py-3 rounded-lg border text-sm font-medium transition
+                  ${gateway === opt.value
+                    ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
+                    : 'border-gray-200 text-gray-600 hover:border-gray-300'}`}
+              >
+                {opt.label}
+                {gateway === opt.value && <span className="text-xs font-semibold">Active</span>}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Change password */}
       <div className="card p-6">

@@ -9,6 +9,8 @@ const FeeAssignment = require('../models/FeeAssignment');
 const Student       = require('../models/Student');
 const { emitReconciliationEvent } = require('../sockets/reconciliation.socket');
 const { createPaymentNotifications } = require('./notification.service');
+const { resolvePlatformFee } = require('./platformFee.service');
+const { checkEarlyPaymentDiscount } = require('./earlyPaymentDiscount.service');
 
 // ─── Resolve payment status ──────────────────────────────────────────────────
 const resolveStatus = (amountExpected, totalPaid) => {
@@ -77,7 +79,7 @@ const processPayment = async ({
     studentId: student._id,
     status:    { $in: ['unpaid', 'partial'] },
   })
-    .populate('feeStructureId', 'name term academicSession')
+    .populate('feeStructureId', 'name term academicSession dueDate')
     .sort({ createdAt: 1 });
 
   if (!feeAssignment) {
@@ -95,8 +97,30 @@ const processPayment = async ({
   // 4. Compute reconciliation
   const balanceBefore = feeAssignment.balance;
   const totalNowPaid  = feeAssignment.totalPaid + amountPaid;
-  const { status, reconciliationStatus, balance, overpayment } =
-    resolveStatus(feeAssignment.amountExpected, totalNowPaid);
+
+  // 4a. Task 2iii — early full-payment discount (school absorbs this, not
+  // the platform: platformFee below is always computed on the real
+  // amountPaid, never on the undiscounted amountExpected).
+  const discount = checkEarlyPaymentDiscount(feeAssignment, amountPaid);
+
+  let status, reconciliationStatus, balance, overpayment;
+  if (discount.qualifies) {
+    status = 'paid';
+    reconciliationStatus = 'exact';
+    balance = 0;
+    overpayment = 0;
+  } else {
+    ({ status, reconciliationStatus, balance, overpayment } =
+      resolveStatus(feeAssignment.amountExpected, totalNowPaid));
+  }
+
+  // 4b. Task 1 + 4 — platform fee, matched to the gateway's own processing
+  // cost, netted out of what counts as the school's withdrawable revenue.
+  // Waived automatically if a referral reward (task 2i) is currently active.
+  const gateway = student.virtualAccount?.gateway || 'nomba';
+  const { platformFee, netAmountForSchool, waived } = await resolvePlatformFee({
+    amountPaid, gateway, schoolId: student.schoolId,
+  });
 
   // 5. Atomic write (with replica set fallback)
   const paymentData = {
@@ -116,6 +140,12 @@ const processPayment = async ({
     overpaymentAmount:  overpayment,
     source,
     processedAt:        new Date(),
+    gateway,
+    platformFee,
+    platformFeeWaived:  waived,
+    netAmountForSchool,
+    earlyPaymentDiscountApplied: discount.qualifies,
+    earlyPaymentDiscountAmount:  discount.discountAmount,
   };
 
   const assignmentUpdate = {
@@ -124,6 +154,10 @@ const processPayment = async ({
     overpayment,
     status,
     lastPaymentAt: new Date(),
+    ...(discount.qualifies && {
+      discountApplied: true,
+      discountAmount:  discount.discountAmount,
+    }),
   };
 
   const savedPayment = await atomicWrite(paymentData, feeAssignment._id, assignmentUpdate);
@@ -152,6 +186,12 @@ const processPayment = async ({
     reconciliationStatus,
     source,
     processedAt:          savedPayment.processedAt,
+    gateway,
+    platformFee,
+    platformFeeWaived:    waived,
+    netAmountForSchool,
+    earlyPaymentDiscountApplied: discount.qualifies,
+    earlyPaymentDiscountAmount:  discount.discountAmount,
   };
 
   // 7. Real-time Socket.io event

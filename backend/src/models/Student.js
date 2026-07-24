@@ -9,6 +9,10 @@ const virtualAccountSchema = new mongoose.Schema({
   accountHolderId:{ type: String, default: null },
   accountRef:     { type: String, default: null },
   provisionedAt:  { type: Date, default: null },
+  // Which payment gateway this account lives on. Existing documents have no
+  // value here and default to 'nomba' — matches every account provisioned
+  // before this field existed.
+  gateway:        { type: String, enum: ['nomba', 'paystack'], default: 'nomba' },
 }, { _id: false });
 
 

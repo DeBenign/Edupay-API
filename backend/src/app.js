@@ -46,6 +46,9 @@ app.use('/api/payments',      require('./routes/payment.routes'));
 app.use('/api/reports',       require('./routes/report.routes'));
 app.use('/api/notifications', require('./routes/notification.routes'));
 app.use('/api/parents',       require('./routes/parent.routes'));
+app.use('/api/referrals',     require('./routes/referral.routes'));
+app.use('/api/revenue',       require('./routes/revenue.routes'));
+app.use('/api/withdrawals',   require('./routes/withdrawal.routes'));
 
 // ── Error handlers ────────────────────────────────────────────────────────────
 app.use(notFoundHandler);

@@ -18,6 +18,16 @@ const paymentSchema = new mongoose.Schema({
   overpaymentAmount:  { type: Number, default: 0 },
   source:             { type: String, enum: ['webhook','sync','manual'], required: true },
   processedAt:        { type: Date, default: Date.now },
+
+  // ── Platform fee (task 1) ────────────────────────────────────────────────
+  gateway:             { type: String, enum: ['nomba', 'paystack'], required: true },
+  platformFee:         { type: Number, default: 0 }, // what EduPay deducts before crediting school revenue
+  platformFeeWaived:   { type: Boolean, default: false }, // true if a referral waiver was active at payment time
+  netAmountForSchool:  { type: Number, required: true }, // amountPaid - platformFee — this is what counts as the school's revenue
+
+  // ── Early full-payment discount (task 2iii) ──────────────────────────────
+  earlyPaymentDiscountApplied: { type: Boolean, default: false },
+  earlyPaymentDiscountAmount:  { type: Number, default: 0 }, // absorbed by the school, not the platform
 }, { timestamps: true });
 
 paymentSchema.index({ studentId: 1, createdAt: -1 });

@@ -189,4 +189,99 @@ const replayWebhook = async (req, res) => {
   }
 };
 
-module.exports = { handleNombaWebhook, getWebhookLogs, replayWebhook };
+// ─── POST /api/webhooks/paystack ───────────────────────────────────────────────
+// Mirrors handleNombaWebhook exactly — same ACK-first pattern, same
+// reconciliation engine, same WebhookLog audit trail. Only the field
+// extraction differs because Paystack's payload shape is different.
+const PAYSTACK_CREDIT_EVENTS = new Set([
+  'charge.success',           // dedicated virtual account credit
+  'dedicatedaccount.assign.success',
+]);
+
+const handlePaystackWebhook = async (req, res) => {
+  res.status(200).json({ received: true });
+
+  const payload   = req.body;
+  const eventType = payload?.event || 'unknown';
+
+  let webhookLog;
+  try {
+    webhookLog = await WebhookLog.create({
+      event:     eventType,
+      payload,
+      signature: req.headers['x-paystack-signature'] || null,
+      verified:  true, // middleware already verified before we got here
+      processed: false,
+    });
+  } catch (logErr) {
+    console.error('❌ Failed to log Paystack webhook:', logErr.message);
+  }
+
+  if (!PAYSTACK_CREDIT_EVENTS.has(eventType)) {
+    console.log(`ℹ️  Paystack webhook event "${eventType}" — not a credit event. Ignoring.`);
+    if (webhookLog) {
+      webhookLog.processed = true;
+      webhookLog.processingError = `Non-credit event: ${eventType}`;
+      await webhookLog.save().catch(() => {});
+    }
+    return;
+  }
+
+  // Paystack's charge.success payload for a DVA credit nests the receiving
+  // account under data.authorization / data.metadata depending on channel —
+  // dedicated_account is the field to trust for transfer-in charges.
+  const data          = payload?.data || {};
+  const accountNumber = data?.authorization?.receiver_bank_account_number
+                        || data?.dedicated_account?.account_number
+                        || null;
+  const amountPaid    = data?.amount ? data.amount / 100 : 0; // Paystack sends kobo
+  const reference     = data?.reference || null;
+  const narration     = data?.narration || null;
+  const payerName     = data?.customer?.first_name
+                        ? `${data.customer.first_name} ${data.customer.last_name || ''}`.trim()
+                        : null;
+  const payerAccount  = data?.authorization?.sender_bank_account_number || null;
+  const payerBank     = data?.authorization?.sender_bank || null;
+
+  if (!accountNumber || !amountPaid || !reference) {
+    console.error('❌ Paystack webhook missing required fields:', { accountNumber, amountPaid, reference });
+    if (webhookLog) {
+      webhookLog.processingError = 'Missing required fields: accountNumber, amountPaid, or reference';
+      await webhookLog.save().catch(() => {});
+    }
+    return;
+  }
+
+  const io = req.app.locals.io || null;
+
+  try {
+    const result = await processPayment({
+      accountNumber,
+      amountPaid,
+      reference,
+      narration,
+      payerName,
+      payerAccount,
+      payerBank,
+      source: 'webhook',
+      io,
+    });
+
+    if (webhookLog) {
+      webhookLog.processed = true;
+      await webhookLog.save().catch(() => {});
+    }
+
+    if (result.skipped) {
+      console.log(`ℹ️  Paystack webhook ${reference} skipped: ${result.reason}`);
+    }
+  } catch (err) {
+    console.error(`❌ Paystack webhook processing failed [${reference}]:`, err.message);
+    if (webhookLog) {
+      webhookLog.processingError = err.message;
+      await webhookLog.save().catch(() => {});
+    }
+  }
+};
+
+module.exports = { handleNombaWebhook, handlePaystackWebhook, getWebhookLogs, replayWebhook };

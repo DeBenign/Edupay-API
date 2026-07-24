@@ -42,5 +42,26 @@ module.exports = {
       subAccountId:  process.env.NOMBA_SUB_ACCOUNT_ID,
       webhookSecret: process.env.NOMBA_WEBHOOK_SECRET,
     },
+    // Optional second gateway, run in parallel with Nomba. Deliberately NOT
+    // added to requiredEnvVars — the app must keep working for schools still
+    // fully on Nomba even if these are unset.
+    paystack: {
+      secretKey:     process.env.PAYSTACK_SECRET_KEY     || null,
+      webhookSecret: process.env.PAYSTACK_WEBHOOK_SECRET || process.env.PAYSTACK_SECRET_KEY || null,
+      // Set to 'test-bank' in your test-mode env to pilot-test DVA creation
+      // and reconciliation without touching a real bank. Leave unset in
+      // production — defaults to 'wema-bank'.
+      preferredBank: process.env.PAYSTACK_PREFERRED_BANK || null,
+    },
+    // Which gateway new students are provisioned on by default.
+    // Switch this to 'paystack' once the pilot school is validated.
+    defaultPaymentGateway: process.env.DEFAULT_PAYMENT_GATEWAY || 'nomba',
+
+    // Airtime/VTU provider for referral rewards (task 2ii) — pick a provider
+    // (VTpass, Reloadly, etc.) and set both of these; unset = disabled.
+    airtime: {
+      baseUrl: process.env.AIRTIME_PROVIDER_BASE_URL || null,
+      apiKey:  process.env.AIRTIME_PROVIDER_API_KEY  || null,
+    },
   },
 };
