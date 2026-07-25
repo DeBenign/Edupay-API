@@ -79,3 +79,24 @@ export const notificationAPI = {
   markRead:   (id)     => api.patch(`/notifications/${id}/read`),
   markAllRead:()       => api.patch('/notifications/read-all'),
 }
+
+// ─── Revenue ──────────────────────────────────────────────────────────────────
+export const revenueAPI = {
+  school:   (schoolId, params) => api.get(`/revenue/schools/${schoolId}`, { params }),
+  platform: (params)           => api.get('/revenue/platform', { params }),
+  allSchools:()                => api.get('/revenue/schools'),
+}
+
+// ─── Withdrawals ──────────────────────────────────────────────────────────────
+export const withdrawalAPI = {
+  requestSchool: (schoolId, data) => api.post(`/withdrawals/schools/${schoolId}`, data),
+  historySchool: (schoolId)       => api.get(`/withdrawals/schools/${schoolId}`),
+  requestPlatform:(data)          => api.post('/withdrawals/platform', data),
+}
+
+// ─── Referrals ────────────────────────────────────────────────────────────────
+export const referralAPI = {
+  list:         (params) => api.get('/referrals', { params }),
+  rewardWaiver: (id) => api.post(`/referrals/${id}/reward/fee-waiver`),
+  rewardAirtime:(id) => api.post(`/referrals/${id}/reward/airtime`),
+}
