@@ -12,10 +12,12 @@ const userSchema = new mongoose.Schema({
   phone:       { type: String, trim: true },
   isActive:    { type: Boolean, default: true },
   lastLoginAt: { type: Date, default: null },
-  // Personal referral code — any admin/bursar/parent can share this to refer
-  // a NEW school. On manual confirmation by platform staff, this user gets
-  // an airtime top-up (see referral.service.js).
-  referralCode: { type: String, unique: true, sparse: true, uppercase: true },
+ // Personal referral code — any admin/bursar/parent can share this to refer
+// a NEW school. The referring user automatically becomes eligible for a
+// ₦2,000 airtime reward once the referred school makes its first payment
+// (see referral.service.js's checkReferralConversion) — claimed self-serve
+// by the user from their own dashboard, not sent by an admin.
+referralCode: { type: String, unique: true, sparse: true, uppercase: true },
 }, { timestamps: true });
 
 userSchema.pre('validate', function (next) {

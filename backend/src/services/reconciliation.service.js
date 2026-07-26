@@ -11,6 +11,7 @@ const { emitReconciliationEvent } = require('../sockets/reconciliation.socket');
 const { createPaymentNotifications } = require('./notification.service');
 const { resolvePlatformFee } = require('./platformFee.service');
 const { checkEarlyPaymentDiscount } = require('./earlyPaymentDiscount.service');
+const { checkReferralConversion } = require('./referral.service');
 
 // ─── Resolve payment status ──────────────────────────────────────────────────
 const resolveStatus = (amountExpected, totalPaid) => {
@@ -23,6 +24,7 @@ const resolveStatus = (amountExpected, totalPaid) => {
 // ─── Atomic write with session fallback ──────────────────────────────────────
 // MongoDB standalone (local dev) does not support transactions.
 // Atlas M0 (free) does — so production works fully atomically.
+
 const atomicWrite = async (paymentData, assignmentId, assignmentUpdate) => {
   try {
     const session = await mongoose.startSession();
@@ -30,21 +32,24 @@ const atomicWrite = async (paymentData, assignmentId, assignmentUpdate) => {
     await session.withTransaction(async () => {
       [savedPayment] = await Payment.create([paymentData], { session });
       await FeeAssignment.findByIdAndUpdate(assignmentId, { $set: assignmentUpdate }, { session });
+      // Runs inside the same transaction as this payment — platformFee for THIS
+      // payment was already computed above, so any waiver this triggers only
+      // affects payments from here on, never this one.
+      await checkReferralConversion(paymentData.schoolId, session);
     });
     await session.endSession();
     return savedPayment;
   } catch (sessionErr) {
-    // Fallback: sequential writes (local standalone MongoDB)
     if (sessionErr.message?.includes('Transaction') || sessionErr.message?.includes('replica')) {
       console.warn('⚠️  Replica set not available — using sequential writes (dev mode)');
       const savedPayment = await Payment.create(paymentData);
       await FeeAssignment.findByIdAndUpdate(assignmentId, { $set: assignmentUpdate });
+      await checkReferralConversion(paymentData.schoolId, null); // no session in local standalone Mongo
       return savedPayment;
     }
     throw sessionErr;
   }
 };
-
 // ─── Main reconciliation entry point ─────────────────────────────────────────
 const processPayment = async ({
   accountNumber,

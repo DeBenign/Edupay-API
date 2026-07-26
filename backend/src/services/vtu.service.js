@@ -1,4 +1,3 @@
-// services/vtu.service.js
 const axios = require("axios");
 
 const client = axios.create({
@@ -24,7 +23,7 @@ async function buyAirtime({ phoneNumber, network, amount }) {
 
 async function verifyTransaction(requestId) {
   const { data } = await client.post("/requery", { request_id: requestId });
-  return data; // check data.content.transactions.status === "delivered"
+  return data; // data.content.transactions.status === "delivered"
 }
 
 module.exports = { buyAirtime, verifyTransaction };

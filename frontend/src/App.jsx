@@ -1,4 +1,6 @@
 // src/App.jsx — Complete wiring of all pages
+// add to the imports at the top
+import Home from './pages/Home'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth }   from './context/AuthContext'
 import { SocketProvider }          from './context/SocketContext'
@@ -47,11 +49,11 @@ const WithLayout = ({ children }) => (
 )
 
 // ─── Root redirect based on role ──────────────────────────────────────────────
-const RootRedirect = () => {
+const Root = () => {
   const { user, loading } = useAuth()
   if (loading) return <PageLoader />
-  if (!user)   return <Navigate to="/login" replace />
-  return <Navigate to={`/${user.role}`} replace />
+  if (user) return <Navigate to={`/${user.role}`} replace />
+  return <HomePage />
 }
 
 export default function App() {
@@ -61,7 +63,7 @@ export default function App() {
         <Routes>
 
           {/* ── Public ──────────────────────────────────────────────────────── */}
-          <Route path="/"         element={<RootRedirect />} />
+          <Route path="/"         element={<Root/>} />
           <Route path="/login"    element={<Login />} />
           <Route path="/register" element={<Register />} />
 

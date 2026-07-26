@@ -1,7 +1,11 @@
 // src/controllers/referral.controller.js
 const Referral = require('../models/Referral');
-const { applyFeeWaiver, applyAirtimeReward } = require('../services/referral.service');
+const ReferralReward = require('../models/ReferralReward');
+const { applyFeeWaiver } = require('../services/referral.service');
+const vtu = require('../services/vtu.service');
 const { success, error, badRequest } = require('../utils/apiResponse');
+
+// ── Admin-facing: school-to-school referrals (stays admin-triggered) ──────
 
 // GET /api/referrals?status=pending — platform admin only
 const listReferrals = async (req, res) => {
@@ -13,7 +17,7 @@ const listReferrals = async (req, res) => {
     }
     const referrals = await Referral.find(filter)
       .populate('referrerSchoolId', 'name referralCode')
-      .populate('referrerUserId',   'fullName email phone role')
+      .populate('referrerUserId', 'fullName email phone role')
       .populate('referredSchoolId', 'name')
       .sort({ createdAt: -1 });
     return success(res, { referrals });
@@ -28,42 +32,43 @@ const rewardFeeWaiver = async (req, res) => {
   } catch (err) { return badRequest(res, err.message); }
 };
 
-// POST /api/referrals/:id/reward/airtime — platform admin only
-const rewardAirtime = async (req, res) => {
+// ── User-facing: individual airtime rewards (self-serve, NOT admin) ───────
+
+// GET /api/referrals/rewards — the logged-in user's own reward list
+const getMyRewards = async (req, res) => {
   try {
-    const referral = await applyAirtimeReward(req.params.id, req.user._id);
-    return success(res, { referral }, 'Airtime reward sent');
-  } catch (err) { return badRequest(res, err.message); }
-};
-// controllers/referral.controller.js
-const ReferralReward = require("../models/ReferralReward");
-const vtu = require("../services/vtu.service");
-
-exports.claimReward = async (req, res) => {
-  const { rewardId } = req.params;
-  const { phoneNumber, network } = req.body;
-  const userId = req.user.id; // from auth middleware — not admin-supplied
-
-  // Atomically lock: only succeeds if still unclaimed AND owned by this user
-  const reward = await ReferralReward.findOneAndUpdate(
-    { _id: rewardId, ownerId: userId, status: "unclaimed" },
-    { status: "processing", phoneNumber, network },
-    { new: true }
-  );
-  if (!reward) return res.status(409).json({ error: "Reward already claimed or not yours" });
-
-  try {
-    const { requestId } = await vtu.buyAirtime({ phoneNumber, network, amount: reward.amount });
-    reward.vtpassRequestId = requestId;
-    reward.status = "claimed";
-    reward.claimedAt = new Date();
-    await reward.save();
-    return res.json({ message: "Airtime sent", reward });
-  } catch (err) {
-    reward.status = "failed";
-    await reward.save();
-    return res.status(502).json({ error: "VTU purchase failed, try again" });
-  }
+    const rewards = await ReferralReward.find({ ownerId: req.user._id }).sort({ createdAt: -1 });
+    return success(res, { rewards });
+  } catch (err) { return error(res, err.message); }
 };
 
-module.exports = { listReferrals, rewardFeeWaiver, rewardAirtime };
+// POST /api/referrals/rewards/:rewardId/claim — reward owner only
+const claimReward = async (req, res) => {
+  try {
+    const { rewardId } = req.params;
+    const { phoneNumber, network } = req.body;
+    const userId = req.user._id; // the logged-in owner — never admin-supplied
+
+    const reward = await ReferralReward.findOneAndUpdate(
+      { _id: rewardId, ownerId: userId, status: 'unclaimed' },
+      { status: 'processing', phoneNumber, network },
+      { new: true }
+    );
+    if (!reward) return badRequest(res, 'Reward already claimed or not yours');
+
+    try {
+      const { requestId } = await vtu.buyAirtime({ phoneNumber, network, amount: reward.amount });
+      reward.vtpassRequestId = requestId;
+      reward.status = 'claimed';
+      reward.claimedAt = new Date();
+      await reward.save();
+      return success(res, { reward }, 'Airtime sent');
+    } catch (vtuErr) {
+      reward.status = 'failed';
+      await reward.save();
+      return error(res, 'VTU purchase failed, try again');
+    }
+  } catch (err) { return error(res, err.message); }
+};
+
+module.exports = { listReferrals, rewardFeeWaiver, getMyRewards, claimReward };

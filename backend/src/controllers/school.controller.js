@@ -12,30 +12,31 @@ const createSchool = async (req, res) => {
     const school = await School.create({ name, address, email, phone, createdBy: req.user._id });
     await User.findByIdAndUpdate(req.user._id, { schoolId: school._id });
 
-    // Referral trail — reward itself is applied manually by an admin later
-    // (see referral.controller.js), this just records who gets credit.
-    if (referralCode) {
-      const code = referralCode.trim().toUpperCase();
-      const referrerSchool = await School.findOne({ referralCode: code });
-      const referrerUser   = !referrerSchool ? await User.findOne({ referralCode: code }) : null;
+    // Referral trail — rewards convert automatically on the referred school's
+// first payment (see referral.service.js's checkReferralConversion).
+if (referralCode) {
+  const code = referralCode.trim().toUpperCase();
+  const referrerSchool = await School.findOne({ referralCode: code });
+  const referrerUser   = !referrerSchool ? await User.findOne({ referralCode: code }) : null;
 
-      if (referrerSchool || referrerUser) {
-        school.referredBySchoolId = referrerSchool?._id || null;
-        school.referredByUserId   = referrerUser?._id || null;
-        await school.save();
+  if (referrerSchool || referrerUser) {
+    school.referredBySchoolId = referrerSchool?._id || null;
+    school.referredByUserId   = referrerUser?._id || null;
+    await school.save();
 
-        await Referral.create({
-          code,
-          referrerSchoolId: referrerSchool?._id || null,
-          referrerUserId:   referrerUser?._id || null,
-          referredSchoolId: school._id,
-          feeWaiverStatus:  referrerSchool ? 'pending' : 'none',
-          airtimeStatus:    referrerUser   ? 'pending' : 'none',
-        });
-      }
+    await Referral.create({
+      code,
+      referrerSchoolId: referrerSchool?._id || null,
+      referrerUserId:   referrerUser?._id || null,
+      referrerRole:     referrerUser?.role || null,   // ← NEW — required by createAirtimeReward
+      referredSchoolId: school._id,
+      feeWaiverStatus:  referrerSchool ? 'pending' : 'none',
+      airtimeStatus:    referrerUser   ? 'pending' : 'none',
+    });
+  }
       // An unrecognized code is silently ignored rather than blocking signup —
       // a typo in a referral code shouldn't stop a school from registering.
-    }
+ }
 
     return created(res, { school }, 'School created successfully');
   } catch (err) {
