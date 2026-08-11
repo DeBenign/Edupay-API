@@ -21,11 +21,11 @@ const referralSchema = new mongoose.Schema({
   feeWaiverAppliedAt: { type: Date, default: null },
 
   // Task 2ii — referring user (admin/bursar/parent) becomes eligible for
-  // ₦2,000 airtime. 'reward_created' means a claimable ReferralReward now
+  // ₦1,000 airtime. 'reward_created' means a claimable ReferralReward now
   // exists — whether the user has actually claimed it lives on that document
   // (unclaimed/processing/claimed/failed), not here.
   airtimeStatus: { type: String, enum: ['none', 'pending', 'reward_created', 'failed'], default: 'none' },
-  airtimeAmount: { type: Number, default: 2000 },
+  airtimeAmount: { type: Number, default: 1000 },
 
   processedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null }, // admin who manually triggered a fee-waiver override, if any
 }, { timestamps: true });

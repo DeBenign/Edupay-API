@@ -10,6 +10,11 @@ const feeAssignmentSchema = new mongoose.Schema({
   balance:        { type: Number, default: function() { return this.amountExpected; } },
   overpayment:    { type: Number, default: 0 },
   status:         { type: String, enum: ['unpaid','partial','paid','overpaid'], default: 'unpaid' },
+  overpaymentResolution: {
+  type: String,
+  enum: ['pending', 'refund_requested', 'credited_next_term', 'refunded'],
+  default: 'pending',
+},
   lastPaymentAt:  { type: Date,   default: null },
   notes:          { type: String, default: null },
   // Task 2iii — set once an early full-payment discount has been applied

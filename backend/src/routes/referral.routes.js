@@ -1,15 +1,21 @@
-// src/routes/referral.routes.js
 const express = require('express');
 const router = express.Router();
 const { protect } = require('../middleware/auth.middleware');
 const { requirePlatformAdmin } = require('../middleware/platformAdmin.middleware');
-const { listReferrals, rewardFeeWaiver, rewardAirtime } = require('../controllers/referral.controller');
+const {
+  listReferrals,
+  rewardFeeWaiver,
+  getMyRewards,
+  claimReward,
+} = require('../controllers/referral.controller');
 
-router.post("/rewards/:rewardId/claim", protect, referralController.claimReward);
+// Self-serve, own-reward-only — must stay OUTSIDE the requirePlatformAdmin gate
+router.get('/rewards', protect, getMyRewards);
+router.post('/rewards/:rewardId/claim', protect, claimReward);
+
+// Platform-admin-only from here
 router.use(protect, requirePlatformAdmin);
-
 router.get('/', listReferrals);
 router.post('/:id/reward/fee-waiver', rewardFeeWaiver);
-router.post('/:id/reward/airtime',    rewardAirtime);
 
 module.exports = router;

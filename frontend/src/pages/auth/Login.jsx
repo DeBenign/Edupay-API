@@ -5,11 +5,14 @@ import { useAuth } from '../../context/AuthContext'
 import { GraduationCap, Eye, EyeOff } from 'lucide-react'
 import { Alert, Spinner } from '../../components/ui'
 
-export default function Login() {
+const ROLE_LABELS = { admin: 'Admin', bursar: 'Bursar', parent: 'Parent' }
+
+export default function Login({ defaultRole }) {
   const { login }    = useAuth()
   const navigate     = useNavigate()
   const [form, setForm]       = useState({ email: '', password: '' })
   const [error, setError]     = useState('')
+  const [notice, setNotice]   = useState('')
   const [loading, setLoading] = useState(false)
   const [show, setShow]       = useState(false)
 
@@ -17,14 +20,25 @@ export default function Login() {
 
   const handle = async (e) => {
     e.preventDefault()
-    setError(''); setLoading(true)
+    setError(''); setNotice(''); setLoading(true)
     try {
       const user = await login(form.email, form.password)
-      navigate(roleRoutes[user.role] || '/admin')
+      // The URL's role is cosmetic — the backend decides the real role.
+      // If they don't match, briefly tell the person before sending them
+      // to where their account actually lives, instead of silently
+      // ignoring the mismatch.
+      if (defaultRole && user.role !== defaultRole) {
+        setNotice(`You're signed in as ${ROLE_LABELS[user.role] || user.role} — taking you to your dashboard.`)
+        setTimeout(() => navigate(roleRoutes[user.role] || '/admin'), 1200)
+      } else {
+        navigate(roleRoutes[user.role] || '/admin')
+      }
     } catch (err) {
       setError(err.response?.data?.message || 'Login failed. Check your credentials.')
     } finally { setLoading(false) }
   }
+
+  const heading = defaultRole ? `${ROLE_LABELS[defaultRole]} sign in` : 'Sign in to your account'
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center p-4">
@@ -36,13 +50,16 @@ export default function Login() {
             <GraduationCap size={24} className="text-white" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900">EduPay</h1>
-          <p className="text-sm text-gray-500 mt-1">School Fee Management</p>
+          <p className="text-sm text-gray-500 mt-1">
+            {defaultRole ? `${ROLE_LABELS[defaultRole]} Portal` : 'School Fee Management'}
+          </p>
         </div>
 
         <div className="card p-6 shadow-sm">
-          <h2 className="text-base font-semibold text-gray-900 mb-5">Sign in to your account</h2>
+          <h2 className="text-base font-semibold text-gray-900 mb-5">{heading}</h2>
 
           {error && <div className="mb-4"><Alert type="error" message={error} onClose={() => setError('')} /></div>}
+          {notice && <div className="mb-4"><Alert type="info" message={notice} /></div>}
 
           <form onSubmit={handle} className="space-y-4">
             <div>

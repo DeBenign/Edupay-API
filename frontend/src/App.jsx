@@ -53,7 +53,7 @@ const Root = () => {
   const { user, loading } = useAuth()
   if (loading) return <PageLoader />
   if (user) return <Navigate to={`/${user.role}`} replace />
-  return <HomePage />
+  return <Home />
 }
 
 export default function App() {
@@ -62,10 +62,13 @@ export default function App() {
       <BrowserRouter>
         <Routes>
 
-          {/* ── Public ──────────────────────────────────────────────────────── */}
-          <Route path="/"         element={<Root/>} />
-          <Route path="/login"    element={<Login />} />
-          <Route path="/register" element={<Register />} />
+        {/* ── Public ──────────────────────────────────────────────────────── */}
+        <Route path="/"              element={<Root/>} />
+        <Route path="/login"         element={<Login />} />
+        <Route path="/login/admin"   element={<Login defaultRole="admin" />} />
+        <Route path="/login/bursar"  element={<Login defaultRole="bursar" />} />
+        <Route path="/login/parent"  element={<Login defaultRole="parent" />} />
+        <Route path="/register"      element={<Register />} />
 
           {/* ── Admin ───────────────────────────────────────────────────────── */}
           <Route path="/admin" element={

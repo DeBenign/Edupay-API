@@ -32,9 +32,6 @@ const atomicWrite = async (paymentData, assignmentId, assignmentUpdate) => {
     await session.withTransaction(async () => {
       [savedPayment] = await Payment.create([paymentData], { session });
       await FeeAssignment.findByIdAndUpdate(assignmentId, { $set: assignmentUpdate }, { session });
-      // Runs inside the same transaction as this payment — platformFee for THIS
-      // payment was already computed above, so any waiver this triggers only
-      // affects payments from here on, never this one.
       await checkReferralConversion(paymentData.schoolId, session);
     });
     await session.endSession();
@@ -44,7 +41,7 @@ const atomicWrite = async (paymentData, assignmentId, assignmentUpdate) => {
       console.warn('⚠️  Replica set not available — using sequential writes (dev mode)');
       const savedPayment = await Payment.create(paymentData);
       await FeeAssignment.findByIdAndUpdate(assignmentId, { $set: assignmentUpdate });
-      await checkReferralConversion(paymentData.schoolId, null); // no session in local standalone Mongo
+      await checkReferralConversion(paymentData.schoolId, null);
       return savedPayment;
     }
     throw sessionErr;

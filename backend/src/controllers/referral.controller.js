@@ -1,13 +1,9 @@
-// src/controllers/referral.controller.js
 const Referral = require('../models/Referral');
 const ReferralReward = require('../models/ReferralReward');
 const { applyFeeWaiver } = require('../services/referral.service');
 const vtu = require('../services/vtu.service');
 const { success, error, badRequest } = require('../utils/apiResponse');
 
-// ── Admin-facing: school-to-school referrals (stays admin-triggered) ──────
-
-// GET /api/referrals?status=pending — platform admin only
 const listReferrals = async (req, res) => {
   try {
     const { status } = req.query;
@@ -24,17 +20,14 @@ const listReferrals = async (req, res) => {
   } catch (err) { return error(res, err.message); }
 };
 
-// POST /api/referrals/:id/reward/fee-waiver — platform admin only
 const rewardFeeWaiver = async (req, res) => {
   try {
     const referral = await applyFeeWaiver(req.params.id, req.user._id);
+    if (!referral) return badRequest(res, 'Fee waiver already applied or not pending');
     return success(res, { referral }, 'Platform fee waived for 1 month');
   } catch (err) { return badRequest(res, err.message); }
 };
 
-// ── User-facing: individual airtime rewards (self-serve, NOT admin) ───────
-
-// GET /api/referrals/rewards — the logged-in user's own reward list
 const getMyRewards = async (req, res) => {
   try {
     const rewards = await ReferralReward.find({ ownerId: req.user._id }).sort({ createdAt: -1 });
@@ -42,12 +35,11 @@ const getMyRewards = async (req, res) => {
   } catch (err) { return error(res, err.message); }
 };
 
-// POST /api/referrals/rewards/:rewardId/claim — reward owner only
 const claimReward = async (req, res) => {
   try {
     const { rewardId } = req.params;
     const { phoneNumber, network } = req.body;
-    const userId = req.user._id; // the logged-in owner — never admin-supplied
+    const userId = req.user._id;
 
     const reward = await ReferralReward.findOneAndUpdate(
       { _id: rewardId, ownerId: userId, status: 'unclaimed' },
