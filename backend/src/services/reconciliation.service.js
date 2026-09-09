@@ -66,15 +66,18 @@ const processPayment = async ({
     return { skipped: true, reason: 'duplicate_reference', reference };
   }
 
-  // 2. Find student by virtual account number
-  const student = await Student.findOne({
-    'virtualAccount.accountNumber': accountNumber,
-    isActive: true,
-  });
-  if (!student) {
-    console.warn(`⚠️  No student found for account: ${accountNumber}`);
-    return { skipped: true, reason: 'unknown_account', accountNumber };
-  }
+  // 2. Find student by virtual account number — check both gateways, note which matched
+const student = await Student.findOne({
+  isActive: true,
+  $or: [
+    { 'virtualAccounts.nomba.accountNumber': accountNumber },
+    { 'virtualAccounts.paystack.accountNumber': accountNumber },
+  ],
+});
+if (!student) {
+  console.warn(`⚠️  No student found for account: ${accountNumber}`);
+  return { skipped: true, reason: 'unknown_account', accountNumber };
+}
 
   // 3. Find oldest open fee assignment
   const feeAssignment = await FeeAssignment.findOne({
@@ -119,7 +122,8 @@ const processPayment = async ({
   // 4b. Task 1 + 4 — platform fee, matched to the gateway's own processing
   // cost, netted out of what counts as the school's withdrawable revenue.
   // Waived automatically if a referral reward (task 2i) is currently active.
-  const gateway = student.virtualAccount?.gateway || 'nomba';
+// Which gateway this specific payment came in on — determines platform fee rate
+  const gateway = student.virtualAccounts?.nomba?.accountNumber === accountNumber ? 'nomba' : 'paystack'; 
   const { platformFee, netAmountForSchool, waived } = await resolvePlatformFee({
     amountPaid, gateway, schoolId: student.schoolId,
   });
@@ -136,6 +140,7 @@ const processPayment = async ({
     payerAccountName:   payerName,
     payerAccountNumber: payerAccount,
     payerBankName:      payerBank,
+    payerBankCode,
     reconciliationStatus,
     balanceBefore,
     balanceAfter:       balance,
@@ -218,22 +223,33 @@ const processPayment = async ({
 };
 
 // ─── Manual payment (bursar override) ────────────────────────────────────────
-const processManualPayment = async ({ studentId, amountPaid, reference, narration = 'Manual payment entry', io = null }) => {
+const processManualPayment = async ({ studentId, amountPaid, reference, narration = 'Manual payment entry', gateway = null, io = null }) => {
   const student = await Student.findById(studentId);
-  if (!student)                           throw new Error('Student not found');
-  if (!student.virtualAccount?.accountNumber) throw new Error('Student has no virtual account');
+  if (!student) throw new Error('Student not found');
+
+  // Manual entries aren't tied to a real transfer, so there's no account
+  // number to resolve gateway from — use whichever is explicitly passed,
+  // else whichever account actually exists (prefer nomba if both do, since
+  // that's still the platform's primary rail).
+  const resolvedGateway = gateway
+    || (student.virtualAccounts?.nomba?.accountNumber && 'nomba')
+    || (student.virtualAccounts?.paystack?.accountNumber && 'paystack');
+
+  if (!resolvedGateway) throw new Error('Student has no virtual account on either gateway');
+
+  const accountNumber = student.virtualAccounts[resolvedGateway].accountNumber;
+
   return processPayment({
-    accountNumber: student.virtualAccount.accountNumber,
-    amountPaid, reference, narration, source: 'manual', io,
+    accountNumber, amountPaid, reference, narration, source: 'manual', io,
   });
 };
 
 // ─── Reconciliation summary for one assignment ────────────────────────────────
 const getReconciliationSummary = async (feeAssignmentId) => {
   const [assignment, payments] = await Promise.all([
-    FeeAssignment.findById(feeAssignmentId)
-      .populate('studentId',      'fullName studentId class virtualAccount')
-      .populate('feeStructureId', 'name term academicSession amount dueDate'),
+      FeeAssignment.findById(feeAssignmentId)
+        .populate('studentId', 'fullName studentId class virtualAccounts')  // was 'virtualAccount'
+        .populate('feeStructureId', 'name term academicSession amount dueDate'),
     Payment.find({ feeAssignmentId }).sort({ processedAt: 1 }),
   ]);
   if (!assignment) throw new Error('Fee assignment not found');

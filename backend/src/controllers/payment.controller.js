@@ -11,14 +11,17 @@ const { paginate } = require('../utils/paginate');
 // POST /api/payments/manual — bursar records a cash/cheque payment
 const createManualPayment = async (req, res) => {
   try {
-    const { studentId, amountPaid, reference, narration } = req.body;
+    const { studentId, amountPaid, reference, narration, gateway } = req.body;
     if (!studentId || !amountPaid || !reference) {
       return badRequest(res, 'studentId, amountPaid, and reference are required');
     }
     if (amountPaid <= 0) return badRequest(res, 'amountPaid must be greater than 0');
+    if (gateway && !['nomba', 'paystack'].includes(gateway)) {
+      return badRequest(res, "gateway must be 'nomba' or 'paystack' if provided");
+    }
 
-    const io     = req.app.locals.io || null;
-    const result = await processManualPayment({ studentId, amountPaid, reference, narration, io });
+    const io = req.app.locals.io || null;
+    const result = await processManualPayment({ studentId, amountPaid, reference, narration, gateway, io });
 
     if (result.skipped) {
       return badRequest(res, `Payment skipped: ${result.reason}`);
@@ -123,6 +126,22 @@ const approveRefund = async (req, res) => {
     if (!payment?.payerAccountNumber || !payment?.payerBankCode) {
       return badRequest(res, 'No payer account details on file for this payment — cannot refund');
     }
+
+        // in approveRefund, before building `recipient`
+    let bankCode = payment.payerBankCode;
+    if (!bankCode && payment.payerBankName) {
+      const banks = payment.gateway === 'paystack'
+        ? await paystackService.listBanks()
+        : await nombaService.getBankList();
+      const match = banks.find(b =>
+        b.name.toLowerCase().trim() === payment.payerBankName.toLowerCase().trim()
+      );
+      bankCode = match?.code || match?.bankCode || null;
+    }
+    if (!bankCode) {
+      return badRequest(res, 'Could not resolve payer bank code — refund requires manual bank details entry');
+    }
+
 
     let transfer;
     if (payment.gateway === 'paystack') {

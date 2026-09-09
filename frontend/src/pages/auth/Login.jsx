@@ -92,6 +92,10 @@ export default function Login({ defaultRole }) {
           New school?{' '}
           <Link to="/register" className="text-blue-600 hover:underline font-medium">Create an account</Link>
         </p>
+        <p className="text-center text-sm text-gray-500 mt-4">
+          Go to Homepage?{' '} 
+          <Link to="/" className="text-blue-600 hover:underline font-medium"> Homepage</Link>
+        </p>
       </div>
     </div>
   )

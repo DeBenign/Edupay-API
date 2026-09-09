@@ -2,19 +2,15 @@
 const mongoose = require('mongoose');
 
 const virtualAccountSchema = new mongoose.Schema({
-  accountNumber:  { type: String, default: null },
-  accountName:    { type: String, default: null },
-  bankName:       { type: String, default: null },
-  bankCode:       { type: String, default: null },
-  accountHolderId:{ type: String, default: null },
-  accountRef:     { type: String, default: null },
-  provisionedAt:  { type: Date, default: null },
-  // Which payment gateway this account lives on. Existing documents have no
-  // value here and default to 'nomba' — matches every account provisioned
-  // before this field existed.
-  gateway:        { type: String, enum: ['nomba', 'paystack'], default: 'nomba' },
+  accountNumber:   { type: String, default: null },
+  accountName:     { type: String, default: null },
+  bankName:        { type: String, default: null },
+  bankCode:        { type: String, default: null },
+  accountHolderId: { type: String, default: null },
+  accountRef:      { type: String, default: null },
+  provisionedAt:   { type: Date, default: null },
 }, { _id: false });
-
+// no `gateway` field needed anymore — the parent key (nomba/paystack) IS the gateway
 
 const studentSchema = new mongoose.Schema({
   schoolId:       { type: mongoose.Schema.Types.ObjectId, ref: 'School', required: true },
@@ -24,11 +20,15 @@ const studentSchema = new mongoose.Schema({
   class:          { type: String, required: true, trim: true },
   gender:         { type: String, enum: ['male','female'], required: true },
   dateOfBirth:    { type: Date,   default: null },
-  virtualAccount: { type: virtualAccountSchema, default: () => ({}) },
+  virtualAccounts: {
+    nomba:    { type: virtualAccountSchema, default: () => ({}) },
+    paystack: { type: virtualAccountSchema, default: () => ({}) },
+  },
   isActive:       { type: Boolean, default: true },
 }, { timestamps: true });
 
 studentSchema.index({ schoolId: 1, studentId: 1 }, { unique: true });
-studentSchema.index({ 'virtualAccount.accountNumber': 1 });
+studentSchema.index({ 'virtualAccounts.nomba.accountNumber': 1 });
+studentSchema.index({ 'virtualAccounts.paystack.accountNumber': 1 });
 
 module.exports = mongoose.models.Student || mongoose.model('Student', studentSchema);

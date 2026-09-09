@@ -51,7 +51,7 @@ export default function Register() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">Email address</label>
-              <input type="email" className="input" placeholder="admin@greenfield.edu.ng" required value={form.email} onChange={set('email')} />
+              <input type="email" className="input" placeholder="admin@xxx.edu.ng" required value={form.email} onChange={set('email')} />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">Phone number</label>
@@ -61,6 +61,7 @@ export default function Register() {
               <label className="block text-sm font-medium text-gray-700 mb-1.5">Role</label>
               <select className="input" value={form.role} onChange={set('role')}>
                 <option value="admin">School Admin</option>
+                <option value="parent">Bursar</option>
                 <option value="parent">Parent</option>
               </select>
             </div>
@@ -77,7 +78,8 @@ export default function Register() {
 
         <p className="text-center text-sm text-gray-500 mt-4">
           Already have an account?{' '}
-          <Link to="/login" className="text-blue-600 hover:underline font-medium">Sign in</Link>
+          <Link to="/login" className="text-blue-600 hover:underline font-medium">Sign in</Link>,   
+          <Link to="/" className="text-blue-600 hover:underline font-medium"> Homepage</Link>
         </p>
       </div>
     </div>

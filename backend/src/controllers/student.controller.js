@@ -15,13 +15,16 @@ const enrollStudent = async (req, res) => {
     const existing = await Student.findOne({ schoolId, studentId });
     if (existing) return badRequest(res, `Student ID "${studentId}" already exists in this school`);
     const student = await Student.create({ schoolId, fullName, studentId, class: cls, gender, ...(dateOfBirth && { dateOfBirth }), ...(parentId && { parentId }) });
-    let finalStudent = student, accountWarning = null;
-    try {
-      finalStudent = await provisionStudentVirtualAccount(student);
-    } catch (pe) {
-      accountWarning = `Student enrolled but virtual account provisioning failed: ${pe.message}. Use retry endpoint.`;
-    }
-    return created(res, { student: finalStudent, ...(accountWarning && { warning: accountWarning }) },
+    // enrollStudent — inside student.controller.js
+  let finalStudent = student, accountWarning = null;
+  try {
+    const { student: provisioned, errors } = await provisionStudentVirtualAccount(student);
+    finalStudent = provisioned;
+    if (errors.length) accountWarning = `Partial provisioning failure: ${errors.join('; ')}. Use retry endpoint.`;
+  } catch (pe) {
+    accountWarning = `Student enrolled but virtual account provisioning failed: ${pe.message}. Use retry endpoint.`;
+  }
+      return created(res, { student: finalStudent, ...(accountWarning && { warning: accountWarning }) },
       accountWarning ? 'Student enrolled (virtual account pending)' : 'Student enrolled successfully');
   } catch (err) {
     console.error('enrollStudent error:', err.message);
@@ -83,10 +86,12 @@ const deactivateStudent = async (req, res) => {
   } catch (err) { return error(res); }
 };
 
+// retryAccountProvisioning
 const retryAccountProvisioning = async (req, res) => {
   try {
-    const updatedStudent = await retryVirtualAccountProvisioning(req.params.id);
-    return success(res, { student: updatedStudent }, `Virtual account provisioned: ${updatedStudent.virtualAccount.accountNumber}`);
+    const { student, errors } = await retryVirtualAccountProvisioning(req.params.id);
+    return success(res, { student, ...(errors.length && { warning: errors.join('; ') }) },
+      errors.length ? 'Partially provisioned' : 'Virtual accounts provisioned');
   } catch (err) { return error(res, err.message); }
 };
 
@@ -96,12 +101,19 @@ const getStudentAccount = async (req, res) => {
     if (!student) return notFound(res, 'Student not found');
     if (req.user.role === 'parent' && student.parentId?.toString() !== req.user._id.toString())
       return forbidden(res, 'Access denied');
-    if (!student.virtualAccount?.accountNumber)
+      // getStudentAccount — now returns both options
+    if (!student.virtualAccounts?.nomba?.accountNumber && !student.virtualAccounts?.paystack?.accountNumber)
       return notFound(res, 'Virtual account not yet provisioned. Contact the school.');
+
+    const options = [];
+    if (student.virtualAccounts.nomba?.accountNumber) options.push({ gateway: 'nomba', ...student.virtualAccounts.nomba });
+    if (student.virtualAccounts.paystack?.accountNumber) options.push({ gateway: 'paystack', ...student.virtualAccounts.paystack });
+
     return success(res, {
-      studentName:   student.fullName,
-      studentId:     student.studentId,
-      class:         student.class,
+      studentName: student.fullName,
+      studentId: student.studentId,
+      class: student.class,
+      paymentOptions: options,
       paymentDetails:{
         accountNumber: student.virtualAccount.accountNumber,
         accountName:   student.virtualAccount.accountName,

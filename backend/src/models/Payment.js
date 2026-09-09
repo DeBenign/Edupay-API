@@ -12,6 +12,7 @@ const paymentSchema = new mongoose.Schema({
   payerAccountName:   { type: String, default: null },
   payerAccountNumber: { type: String, default: null },
   payerBankName:      { type: String, default: null },
+  payerBankCode:      { type: String, default: null },
   reconciliationStatus: { type: String, enum: ['exact','underpayment','overpayment'], required: true },
   balanceBefore:      { type: Number, required: true },
   balanceAfter:       { type: Number, required: true },
