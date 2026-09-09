@@ -8,6 +8,7 @@ const {
   withdrawPlatformRevenue,
   withdrawSchoolRevenue,
   schoolWithdrawalHistory,
+  platformWithdrawalHistory
 } = require('../controllers/withdrawal.controller');
 
 router.use(protect);
@@ -15,5 +16,6 @@ router.use(protect);
 router.post('/platform', requirePlatformAdmin, withdrawPlatformRevenue);
 router.post('/schools/:schoolId', authorize('admin', 'bursar'), withdrawSchoolRevenue);
 router.get('/schools/:schoolId',  authorize('admin', 'bursar'), tagPlatformAdmin, schoolWithdrawalHistory);
+router.get('/platform', requirePlatformAdmin, platformWithdrawalHistory);
 
 module.exports = router;

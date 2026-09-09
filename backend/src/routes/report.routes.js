@@ -2,8 +2,11 @@
 const express = require('express');
 const router  = express.Router();
 const {
-  schoolSummary, classBreakdown, overpayments, studentStatement, recentPayments
+  schoolSummary, classBreakdown, overpayments, studentStatement, recentPayments, schoolRevenue, platformRevenue
 } = require('../controllers/report.controller');
+const { requirePlatformAdmin } = require('../middleware/platformAdmin.middleware');
+
+
 const { protect }    = require('../middleware/auth.middleware');
 const { authorize }  = require('../middleware/role.middleware');
 
@@ -18,4 +21,6 @@ router.get('/recent',                       authorize('admin','bursar'), recentP
 // Admin, bursar, AND parent (parent guarded inside controller)
 router.get('/student/:studentId/statement', authorize('admin','bursar','parent'), studentStatement);
 
+router.get('/school-revenue/:schoolId', protect, schoolRevenue);
+router.get('/platform-revenue', protect, requirePlatformAdmin, platformRevenue);
 module.exports = router;

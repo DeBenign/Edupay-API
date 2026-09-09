@@ -237,10 +237,47 @@ const getRecentPayments = async (schoolId, limit = 20) => {
   return payments;
 };
 
+async function getSchoolRevenue(schoolId, { term, session } = {}) {
+  const match = { schoolId, reconciliationStatus: { $in: ['exact', 'underpayment', 'overpayment'] } };
+  if (term) match.term = term;
+  if (session) match.academicSession = session;
+
+  const [result] = await Payment.aggregate([
+    { $match: match },
+    { $group: {
+        _id: null,
+        totalCollected: { $sum: '$amountPaid' },
+        platformFees: { $sum: '$platformFee' },
+        netRevenue: { $sum: { $subtract: ['$amountPaid', '$platformFee'] } },
+        transactionCount: { $sum: 1 },
+    }},
+  ]);
+  return result || { totalCollected: 0, platformFees: 0, netRevenue: 0, transactionCount: 0 };
+}
+
+async function getPlatformRevenue({ term, session } = {}) {
+  const match = {};
+  if (term) match.term = term;
+  if (session) match.academicSession = session;
+
+  const [result] = await Payment.aggregate([
+    { $match: match },
+    { $group: {
+        _id: null,
+        totalPlatformFees: { $sum: '$platformFee' },
+        totalVolume: { $sum: '$amountPaid' },
+        transactionCount: { $sum: 1 },
+    }},
+  ]);
+  return result || { totalPlatformFees: 0, totalVolume: 0, transactionCount: 0 };
+}
+
 module.exports = {
   getSchoolSummary,
   getClassBreakdown,
   getOverpaymentsReport,
   getStudentStatement,
   getRecentPayments,
+  getSchoolRevenue, 
+  getPlatformRevenue 
 };

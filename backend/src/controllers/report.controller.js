@@ -4,7 +4,9 @@ const {
   getClassBreakdown,
   getOverpaymentsReport,
   getStudentStatement,
-  getRecentPayments,
+  getRecentPayments, 
+  getSchoolRevenue, 
+  getPlatformRevenue
 } = require('../services/report.service');
 const { success, error, forbidden } = require('../utils/apiResponse');
 
@@ -104,4 +106,22 @@ const recentPayments = async (req, res) => {
   }
 };
 
-module.exports = { schoolSummary, classBreakdown, overpayments, studentStatement, recentPayments };
+const schoolRevenue = async (req, res) => {
+  try {
+    const { schoolId } = req.params;
+    if (req.user.role !== 'admin' && req.user.schoolId?.toString() !== schoolId) {
+      return forbidden(res, 'You can only view your own school\'s revenue');
+    }
+    const revenue = await getSchoolRevenue(schoolId, req.query);
+    return success(res, { revenue });
+  } catch (err) { return error(res, err.message); }
+};
+
+const platformRevenue = async (req, res) => {
+  try {
+    const revenue = await getPlatformRevenue(req.query);
+    return success(res, { revenue });
+  } catch (err) { return error(res, err.message); }
+};
+
+module.exports = { schoolSummary, classBreakdown, overpayments, studentStatement, recentPayments, schoolRevenue, platformRevenue };
