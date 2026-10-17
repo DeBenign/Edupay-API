@@ -16,5 +16,6 @@ router.patch('/:id',                    protect, staff,  updateStudent);
 router.delete('/:id',                   protect, authorize('admin'), deactivateStudent);
 router.get('/:id/account',              protect, all,    getStudentAccount);
 router.post('/:id/provision-account',   protect, staff,  retryAccountProvisioning);
+router.post('/promote-class', protect, authorize('admin'), promoteClass);
 
 module.exports = router;

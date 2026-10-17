@@ -8,6 +8,8 @@ import { Toast } from '../../components/ui'
 import { GraduationCap, Plus, Search, RefreshCw, Copy, Check, AlertCircle } from 'lucide-react'
 
 const INITIAL_FORM = { fullName: '', studentId: '', class: '', gender: 'male', dateOfBirth: '' }
+const INITIAL_PROMOTE = { fromClass: '', toClass: '', graduate: false, force: false }
+const INITIAL_FEE = { name: '', amount: '', reason: '', term: '', academicSession: '', dueDate: '' }
 
 export default function AdminStudents() {
   const { toasts, toast, remove } = useToast()
@@ -23,6 +25,59 @@ export default function AdminStudents() {
   const [enrollErr,   setEnrollErr]  = useState('')
   const [accountModal,setAccountModal] = useState(null)
   const [copied,      setCopied]     = useState(false)
+
+  const [promoteOpen,    setPromoteOpen]    = useState(false)
+const [promoteForm,    setPromoteForm]    = useState(INITIAL_PROMOTE)
+const [promotePreview, setPromotePreview] = useState(null)
+const [promoting,      setPromoting]      = useState(false)
+const [promoteErr,     setPromoteErr]     = useState('')
+
+const [feeModal,  setFeeModal]  = useState(null)
+const [feeForm,   setFeeForm]   = useState(INITIAL_FEE)
+const [savingFee, setSavingFee] = useState(false)
+const [feeErr,    setFeeErr]    = useState('')
+
+const closePromote = () => { setPromoteOpen(false); setPromotePreview(null); setPromoteErr(''); setPromoteForm(INITIAL_PROMOTE) }
+
+const setP = (k) => (e) => {
+  const v = e.target.type === 'checkbox' ? e.target.checked : e.target.value
+  setPromoteForm(p => ({ ...p, [k]: v })); setPromotePreview(null)
+}
+
+const runPromote = async (preview) => {
+  setPromoting(true); setPromoteErr('')
+  try {
+    const { fromClass, toClass, graduate, force } = promoteForm
+    const res = await studentAPI.promoteClass({
+      fromClass, preview,
+      ...(graduate ? { graduate: true, force } : { toClass }),
+    })
+    if (preview) setPromotePreview(res.data.data)
+    else { toast(res.data?.message || 'Done'); closePromote(); load() }
+  } catch (err) {
+    setPromoteErr(err.response?.data?.message || 'Request failed')
+  } finally { setPromoting(false) }
+}
+
+const setF = (k) => (e) => setFeeForm(p => ({ ...p, [k]: e.target.value }))
+
+const openFee = (s) => { setFeeModal(s); setFeeForm(INITIAL_FEE); setFeeErr('') }
+
+const submitFee = async (e) => {
+  e.preventDefault(); setSavingFee(true); setFeeErr('')
+  try {
+    const { name, amount, reason, term, academicSession, dueDate } = feeForm
+    const res = await feeAPI.addToStudent({
+      studentId: feeModal._id, name, amount: Number(amount),
+      ...(reason && { reason }), ...(term && { term }),
+      ...(academicSession && { academicSession }), ...(dueDate && { dueDate }),
+    })
+    toast(res.data?.message || 'Fee added')
+    setFeeModal(null); load()
+  } catch (err) {
+    setFeeErr(err.response?.data?.message || 'Could not add fee')
+  } finally { setSavingFee(false) }
+}
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -92,9 +147,10 @@ const retryProvision = async (studentId) => {
           <h1 className="page-title">Students</h1>
           <p className="page-sub">Manage enrolled students and their payment accounts</p>
         </div>
-        <button onClick={() => setShowEnroll(true)} className="btn-primary">
-          <Plus size={16} /> Enroll Student
-        </button>
+        <div className="flex gap-2">
+          <button onClick={() => setPromoteOpen(true)} className="btn-secondary">Promote class</button>
+          <button onClick={() => setShowEnroll(true)} className="btn-primary"><Plus size={16} /> Enroll Student</button>
+        </div>
       </div>
 
       {/* Search + filter */}
@@ -151,12 +207,15 @@ const retryProvision = async (studentId) => {
                         )
                       })()}
                 </td>
-                <td><StatusBadge status={s.currentStatus || 'unpaid'} /></td>
-                <td className="text-xs text-gray-400">{formatDate(s.createdAt)}</td>
                 <td>
-                  <button onClick={() => showAccount(s)} className="text-xs text-blue-600 hover:underline">
-                    View →
-                  </button>
+                  {s.currentStatus
+                    ? <StatusBadge status={s.currentStatus} />
+                    : <span className="text-xs text-gray-400">No fee assigned</span>}
+                </td>
+                <td className="text-xs text-gray-400">{formatDate(s.createdAt)}</td>
+                <td className="space-x-3 whitespace-nowrap">
+                  <button onClick={() => showAccount(s)} className="text-xs text-blue-600 hover:underline">View →</button>
+                  <button onClick={() => openFee(s)} className="text-xs text-gray-500 hover:underline">+ Fee</button>
                 </td>
               </tr>
             ))
@@ -267,6 +326,107 @@ const retryProvision = async (studentId) => {
             )}
           </div>
         )}
+      </Modal>
+
+      {/* Promote Class Modal */}
+      <Modal open={promoteOpen} onClose={closePromote} title="Promote Class" size="md">
+        {promoteErr && <div className="mb-4"><Alert type="error" message={promoteErr} /></div>}
+        <div className="space-y-4">
+          <div className="bg-blue-50 border border-blue-100 rounded-lg p-3 text-xs text-blue-700">
+            💡 Promote the highest class first (graduate the last class, then JSS 2 → JSS 3, then JSS 1 → JSS 2). Old fee records stay on each student's account.
+          </div>
+          <Field label="From class" required>
+            <input className="input" placeholder="JSS 1" value={promoteForm.fromClass} onChange={setP('fromClass')} />
+          </Field>
+          <label className="flex items-center gap-2 text-sm text-gray-700">
+            <input type="checkbox" checked={promoteForm.graduate} onChange={setP('graduate')} />
+            Graduating class (deactivate these students instead of moving them)
+          </label>
+          {promoteForm.graduate ? (
+            <label className="flex items-center gap-2 text-xs text-gray-500">
+              <input type="checkbox" checked={promoteForm.force} onChange={setP('force')} />
+              Graduate even students who still owe fees
+            </label>
+          ) : (
+            <Field label="To class" required>
+              <input className="input" placeholder="JSS 2" value={promoteForm.toClass} onChange={setP('toClass')} />
+            </Field>
+          )}
+
+          {promotePreview && (
+            <div className="bg-gray-50 rounded-lg p-3 text-xs text-gray-700 space-y-2">
+              <p>
+                <b>{promotePreview.count}</b> student(s) will {promotePreview.action === 'graduate' ? 'graduate' : `move to ${promotePreview.toClass}`}
+                {promotePreview.matchedLabels?.length > 1 && ` (matched: ${promotePreview.matchedLabels.join(', ')})`}
+              </p>
+              {promotePreview.withOutstandingBalance > 0 && (
+                <p className="text-amber-700">{promotePreview.withOutstandingBalance} still owe fees. Their old fee records stay on their account.</p>
+              )}
+              {promotePreview.skippedOwing?.length > 0 && (
+                <p className="text-red-600">Skipped (still owing): {promotePreview.skippedOwing.map(s => s.fullName).join(', ')}</p>
+              )}
+              {promotePreview.warnings?.map((w, i) => <p key={i} className="text-amber-700">⚠ {w}</p>)}
+              <ul className="max-h-32 overflow-y-auto list-disc pl-4">
+                {promotePreview.students.map(s => <li key={s._id}>{s.fullName} · {s.studentId}</li>)}
+              </ul>
+            </div>
+          )}
+
+          <div className="flex gap-3 justify-end pt-2">
+            <button type="button" className="btn-secondary" onClick={closePromote}>Cancel</button>
+            {!promotePreview ? (
+              <button className="btn-primary" onClick={() => runPromote(true)}
+                disabled={promoting || !promoteForm.fromClass || (!promoteForm.graduate && !promoteForm.toClass)}>
+                {promoting ? <Spinner size="sm" /> : 'Preview'}
+              </button>
+            ) : (
+              <button className="btn-primary" onClick={() => runPromote(false)} disabled={promoting}>
+                {promoting ? <Spinner size="sm" /> : `Confirm (${promotePreview.count})`}
+              </button>
+            )}
+          </div>
+        </div>
+      </Modal>
+
+      {/* Add Fee Modal */}
+      <Modal open={!!feeModal} onClose={() => setFeeModal(null)} title={`Add fee: ${feeModal?.fullName || ''}`} size="md">
+        {feeErr && <div className="mb-4"><Alert type="error" message={feeErr} /></div>}
+        <form onSubmit={submitFee} className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="Fee name" required>
+              <input className="input" placeholder="Uniform" required value={feeForm.name} onChange={setF('name')} />
+            </Field>
+            <Field label="Amount (₦)" required>
+              <input type="number" min="1" className="input" required value={feeForm.amount} onChange={setF('amount')} />
+            </Field>
+          </div>
+          <Field label="Reason (optional)">
+            <input className="input" placeholder="e.g. Excursion to museum" value={feeForm.reason} onChange={setF('reason')} />
+          </Field>
+          <div className="grid grid-cols-3 gap-4">
+            <Field label="Term">
+              <select className="input" value={feeForm.term} onChange={setF('term')}>
+                <option value="">Latest</option>
+                <option value="first">First</option>
+                <option value="second">Second</option>
+                <option value="third">Third</option>
+              </select>
+            </Field>
+            <Field label="Session">
+              <input className="input" placeholder="2025/2026" value={feeForm.academicSession} onChange={setF('academicSession')} />
+            </Field>
+            <Field label="Due date">
+              <input type="date" className="input" value={feeForm.dueDate} onChange={setF('dueDate')} />
+            </Field>
+          </div>
+          <p className="text-xs text-gray-400">Leave term, session and due date blank to use this student's latest term.</p>
+          <div className="flex gap-3 justify-end pt-2">
+            <button type="button" className="btn-secondary" onClick={() => setFeeModal(null)}>Cancel</button>
+            <button type="submit" className="btn-primary" disabled={savingFee}>
+              {savingFee ? <Spinner size="sm" /> : 'Add Fee'}
+            </button>
+          </div>
+        </form>
       </Modal>
     </div>
   )

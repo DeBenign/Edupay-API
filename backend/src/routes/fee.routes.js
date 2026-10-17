@@ -18,5 +18,6 @@ router.post('/assign',                protect, staff, assignFeeToStudent);
 router.post('/assign-class',          protect, staff, assignFeeToClass);
 router.get('/assignments/:studentId', protect, authorize('admin','bursar','parent'), getStudentFeeAssignments);
 router.patch('/assignments/:id/adjust', protect, admin, adjustFeeAmount);
+router.post('/assign-custom', protect, staff, addFeeToStudent);
 
 module.exports = router;

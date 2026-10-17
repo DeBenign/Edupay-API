@@ -26,6 +26,8 @@ export const studentAPI = {
   deactivate:     (id)     => api.delete(`/students/${id}`),
   getAccount:     (id)     => api.get(`/students/${id}/account`),
   retryProvision: (id)     => api.post(`/students/${id}/provision-account`),
+  promoteClass: (data) => api.post('/students/promote-class', data),
+
 }
 
 // ─── Fees ─────────────────────────────────────────────────────────────────────
@@ -37,6 +39,7 @@ export const feeAPI = {
   assignToStudent:       (data)   => api.post('/fees/assign', data),
   assignToClass:         (data)   => api.post('/fees/assign-class', data),
   getStudentAssignments: (id)     => api.get(`/fees/assignments/${id}`),
+  addToStudent: (data) => api.post('/fees/assign-custom', data),
 }
 
 // ─── Payments ─────────────────────────────────────────────────────────────────

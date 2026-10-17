@@ -1,6 +1,7 @@
 // src/controllers/student.controller.js
 const Student       = require('../models/Student');
 const FeeAssignment = require('../models/FeeAssignment');
+const FeeStructure = require('../models/FeeStructure');
 const { provisionStudentVirtualAccount, retryVirtualAccountProvisioning } = require('../services/virtualAccount.service');
 const { paginate }  = require('../utils/paginate');
 const { computeAmountToCollect, isFeeWaived } = require('../services/platformFee.service');
@@ -33,6 +34,17 @@ const enrollStudent = async (req, res) => {
   }
 };
 
+const deriveFeeStatus = (assignments = []) => {
+  if (!assignments.length) return { currentStatus: null, outstandingBalance: 0 };
+
+  const open = assignments.filter((a) => ['unpaid', 'partial'].includes(a.status));
+  const outstandingBalance = open.reduce((sum, a) => sum + (a.balance || 0), 0);
+
+  if (open.length) return { currentStatus: open[0].status, outstandingBalance }; // list is sorted oldest-first
+  if (assignments.some((a) => a.status === 'overpaid')) return { currentStatus: 'overpaid', outstandingBalance: 0 };
+  return { currentStatus: 'paid', outstandingBalance: 0 };
+};
+
 const getStudents = async (req, res) => {
   try {
     const schoolId = req.user.schoolId;
@@ -44,11 +56,31 @@ const getStudents = async (req, res) => {
       { fullName:  { $regex: req.query.search, $options: 'i' } },
       { studentId: { $regex: req.query.search, $options: 'i' } },
     ];
+
     const [students, total] = await Promise.all([
-      Student.find(filter).populate('parentId','fullName email phone').sort({ fullName: 1 }).skip(skip).limit(limit),
+      Student.find(filter).populate('parentId', 'fullName email phone').sort({ fullName: 1 }).skip(skip).limit(limit),
       Student.countDocuments(filter),
     ]);
-    return paginated(res, { students }, buildPagination(total));
+
+    // One extra query for the whole page, not one per student
+    const assignments = await FeeAssignment.find({ studentId: { $in: students.map((s) => s._id) } })
+      .select('studentId status balance createdAt')
+      .sort({ createdAt: 1 })
+      .lean();
+
+    const byStudent = new Map();
+    for (const a of assignments) {
+      const key = a.studentId.toString();
+      if (!byStudent.has(key)) byStudent.set(key, []);
+      byStudent.get(key).push(a);
+    }
+
+    const withStatus = students.map((s) => ({
+      ...s.toObject(),
+      ...deriveFeeStatus(byStudent.get(s._id.toString())),
+    }));
+
+    return paginated(res, { students: withStatus }, buildPagination(total));
   } catch (err) { return error(res); }
 };
 
@@ -151,4 +183,77 @@ const getStudentAccount = async (req, res) => {
   } catch (err) { return error(res); }
 };
 
-module.exports = { enrollStudent, getStudents, getStudent, updateStudent, deactivateStudent, retryAccountProvisioning, getStudentAccount };
+const normClass = (c = '') => String(c).toLowerCase().replace(/[^a-z0-9]/g, '');
+
+// POST /api/students/promote-class  (admin only)
+// { fromClass, toClass }  or  { fromClass, graduate: true }
+// optional: studentIds (subset, e.g. to hold back repeaters), preview, force
+const promoteClass = async (req, res) => {
+  try {
+    const schoolId = req.user.schoolId;
+    if (!schoolId) return badRequest(res, 'Not associated with a school');
+
+    const { fromClass, toClass, graduate = false, studentIds, preview = false, force = false } = req.body;
+    if (!fromClass?.trim()) return badRequest(res, 'fromClass is required');
+    if (graduate && toClass) return badRequest(res, 'Provide either toClass or graduate: true, not both');
+    if (!graduate && !toClass?.trim()) return badRequest(res, 'toClass is required (or set graduate: true)');
+    if (!graduate && normClass(fromClass) === normClass(toClass))
+      return badRequest(res, 'toClass must be different from fromClass');
+
+    // Active students of this school whose class matches, ignoring formatting
+    const active = await Student.find({ schoolId, isActive: true }).select('fullName studentId class');
+    let targets = active.filter((s) => normClass(s.class) === normClass(fromClass));
+    if (Array.isArray(studentIds) && studentIds.length) {
+      const only = new Set(studentIds.map(String));
+      targets = targets.filter((s) => only.has(s._id.toString()));
+    }
+    if (!targets.length) return notFound(res, `No active students found in "${fromClass}"`);
+
+    // Who still owes? Their old assignments stay as they are.
+    const open = await FeeAssignment.find({
+      studentId: { $in: targets.map((s) => s._id) },
+      status: { $in: ['unpaid', 'partial'] },
+    }).select('studentId').lean();
+    const owing = new Set(open.map((a) => a.studentId.toString()));
+
+    const brief = (s) => ({ _id: s._id, fullName: s.fullName, studentId: s.studentId, class: s.class });
+    const skippedOwing = graduate && !force ? targets.filter((s) => owing.has(s._id.toString())) : [];
+    const skippedIds = new Set(skippedOwing.map((s) => s._id.toString()));
+    const toProcess = targets.filter((s) => !skippedIds.has(s._id.toString()));
+
+    if (!toProcess.length)
+      return badRequest(res, 'Nobody to graduate: every matching student still has an outstanding fee. Use force: true to graduate them anyway.');
+
+    // Use the label your fee structures use, so fee assignment matches exactly
+    let finalClass = null;
+    const warnings = [];
+    if (!graduate) {
+      const known = await FeeStructure.distinct('class', { schoolId });
+      finalClass = known.find((c) => normClass(c) === normClass(toClass)) || toClass.trim();
+      if (!known.some((c) => normClass(c) === normClass(toClass)))
+        warnings.push(`No fee structure exists for "${toClass}" yet. Create one before assigning fees or crediting overpayments.`);
+    }
+
+    const summary = {
+      action: graduate ? 'graduate' : 'promote',
+      matchedLabels: [...new Set(targets.map((s) => s.class))],
+      toClass: finalClass,
+      count: toProcess.length,
+      withOutstandingBalance: toProcess.filter((s) => owing.has(s._id.toString())).length,
+      skippedOwing: skippedOwing.map(brief),
+      warnings,
+      students: toProcess.map(brief),
+    };
+    if (preview) return success(res, { preview: true, ...summary }, 'Preview only. No changes made.');
+
+    const ids = toProcess.map((s) => s._id);
+    await Student.updateMany(
+      { _id: { $in: ids }, schoolId },
+      { $set: graduate ? { isActive: false } : { class: finalClass } }
+    );
+
+    return success(res, summary,
+      graduate ? `${ids.length} student(s) graduated` : `${ids.length} student(s) promoted to ${finalClass}`);
+  } catch (err) { return error(res, err.message); }
+};
+module.exports = { enrollStudent, getStudents, getStudent, updateStudent, deactivateStudent, retryAccountProvisioning, getStudentAccount, promoteClass };
