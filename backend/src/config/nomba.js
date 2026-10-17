@@ -9,21 +9,21 @@ let tokenExpiresAt = null;
 // ─── Fetch Nomba access token ─────────────────────────────────────────────────
 const fetchNombaToken = async () => {
   try {
-    const response = await axios.post(
-      `${env.nomba.baseUrl}/v1/auth/token/issue`,
-      {
-        clientId:     env.nomba.clientId,
-        clientSecret: env.nomba.secretKey,   // secretKey used as clientSecret in body
-        grant_type:   'client_credentials',
-      },
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          accountId:      env.nomba.accountId, // parent account ID in header
-        },
-        timeout: 15000,
-      }
-    );
+  const response = await axios.post(
+  `${env.nomba.baseUrl}/v1/auth/token/issue`,
+  {
+    grant_type:    'client_credentials',
+    client_id:     env.nomba.clientId,
+    client_secret: env.nomba.secretKey,
+  },
+  {
+    headers: {
+      'Content-Type': 'application/json',
+      accountId:      env.nomba.accountId,
+    },
+    timeout: 15000,
+  }
+);
 
     const payload      = response.data?.data || response.data;
     accessToken        = payload.access_token;

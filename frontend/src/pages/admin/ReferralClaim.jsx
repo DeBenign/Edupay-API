@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import api from '../api'; // adjust to your actual axios instance export
-import { Alert, Spinner, Badge } from '../components/ui';
+import api from '../../api'; // adjust to your actual axios instance export
+import { Alert, Spinner, Badge } from '../../components/ui';
 
 const NETWORKS = ['mtn', 'glo', 'airtel', '9mobile'];
 

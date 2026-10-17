@@ -6,6 +6,7 @@ const webhookLogSchema = new mongoose.Schema({
   payload:         { type: mongoose.Schema.Types.Mixed, required: true },
   signature:       { type: String, default: null },
   verified:        { type: Boolean, default: false },
+  schoolId: { type: mongoose.Schema.Types.ObjectId, ref: 'School', default: null, index: true },
   processed:       { type: Boolean, default: false },
   processingError: { type: String,  default: null },
   receivedAt:      { type: Date,    default: Date.now },

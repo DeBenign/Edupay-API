@@ -59,19 +59,26 @@ export default function AdminStudents() {
     }
   }
 
-  const retryProvision = async (studentId) => {
-    try {
-      await studentAPI.retryProvision(studentId)
-      toast('Virtual account provisioned successfully!')
-      load()
-    } catch (err) {
-      toast(err.response?.data?.message || 'Provisioning failed', 'error')
-    }
-  }
+  const [retrying, setRetrying] = useState(null)
 
+const retryProvision = async (studentId) => {
+  if (retrying) return
+  setRetrying(studentId)
+  try {
+    const res = await studentAPI.retryProvision(studentId)
+    const warning = res.data?.data?.warning
+    if (warning) toast(`Partially provisioned: ${warning}`, 'error')
+    else toast('Virtual accounts provisioned successfully!')
+    load()
+  } catch (err) {
+    toast(err.response?.data?.message || 'Provisioning failed', 'error')
+  } finally {
+    setRetrying(null)
+  }
+}
   const copy = (text) => {
     navigator.clipboard.writeText(text)
-    setCopied(true); setTimeout(() => setCopied(false), 2000)
+    setCopied(text); setTimeout(() => setCopied(false), 2000)
   }
 
   const set = (k) => (e) => setForm(p => ({ ...p, [k]: e.target.value }))
@@ -119,15 +126,30 @@ export default function AdminStudents() {
                 </td>
                 <td><span className="font-mono text-xs bg-gray-100 px-2 py-0.5 rounded">{s.class}</span></td>
                 <td>
-                  {s.virtualAccount?.accountNumber
-                    ? <button onClick={() => showAccount(s)} className="font-mono text-xs text-blue-600 hover:underline">
-                        {s.virtualAccount.accountNumber}
-                      </button>
-                    : <button onClick={() => retryProvision(s._id)}
-                        className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded px-2 py-0.5 hover:bg-amber-100">
-                        ⚠ Retry provision
-                      </button>
-                  }
+                  {(() => {
+                        const nomba = s.virtualAccounts?.nomba?.accountNumber
+                        const paystack = s.virtualAccounts?.paystack?.accountNumber
+                        if (!nomba && !paystack) {
+                         return (
+                            <div className="flex items-center gap-2">
+                              <button onClick={() => showAccount(s)} className="font-mono text-xs text-blue-600 hover:underline">
+                                {nomba || paystack}{nomba && paystack ? ' +1' : ''}
+                              </button>
+                              {(!nomba || !paystack) && (
+                                <button onClick={() => retryProvision(s._id)} disabled={retrying === s._id}
+                                  className="text-[10px] text-amber-600 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5 hover:bg-amber-100 disabled:opacity-50">
+                                  {retrying === s._id ? '…' : `+ ${nomba ? 'Paystack' : 'Nomba'}`}
+                                </button>
+                              )}
+                            </div>
+                          )
+                        }
+                        return (
+                          <button onClick={() => showAccount(s)} className="font-mono text-xs text-blue-600 hover:underline">
+                            {nomba || paystack}{nomba && paystack ? ' +1' : ''}
+                          </button>
+                        )
+                      })()}
                 </td>
                 <td><StatusBadge status={s.currentStatus || 'unpaid'} /></td>
                 <td className="text-xs text-gray-400">{formatDate(s.createdAt)}</td>
@@ -168,7 +190,7 @@ export default function AdminStudents() {
             <input type="date" className="input" value={form.dateOfBirth} onChange={set('dateOfBirth')} />
           </Field>
           <div className="bg-blue-50 border border-blue-100 rounded-lg p-3 text-xs text-blue-700">
-            💡 A unique Nomba virtual account will be automatically provisioned for this student upon enrollment.
+            💡 Nomba and Paystack virtual accounts will be automatically provisioned for this student upon enrollment.
           </div>
           <div className="flex gap-3 justify-end pt-2">
             <button type="button" onClick={() => setShowEnroll(false)} className="btn-secondary">Cancel</button>
@@ -179,49 +201,65 @@ export default function AdminStudents() {
         </form>
       </Modal>
 
-      {/* Account Modal */}
+     {/* Account Modal */}
       <Modal open={!!accountModal} onClose={() => setAccountModal(null)} title="Virtual Account Details">
         {accountModal && (
           <div className="space-y-4">
             <p className="text-sm text-gray-500">
-              Share this account number with parents. Payments reconcile automatically.
+              Share these account numbers with parents. Payments reconcile automatically.
             </p>
-            <div className="bg-gray-50 rounded-xl p-5 space-y-3">
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Student</span>
-                <span className="font-semibold">{accountModal.studentName} · {accountModal.studentId}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Account Name</span>
-                <span className="font-semibold">{accountModal.paymentDetails?.accountName}</span>
-              </div>
-              <div className="flex justify-between text-sm items-center">
-                <span className="text-gray-500">Account Number</span>
-                <div className="flex items-center gap-2">
-                  <span className="font-mono font-bold text-lg text-gray-900">
-                    {accountModal.paymentDetails?.accountNumber}
-                  </span>
-                  <button onClick={() => copy(accountModal.paymentDetails?.accountNumber)}
-                    className="p-1.5 hover:bg-gray-200 rounded transition-colors">
-                    {copied ? <Check size={14} className="text-green-500" /> : <Copy size={14} className="text-gray-400" />}
-                  </button>
+
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-500">Student</span>
+              <span className="font-semibold">{accountModal.studentName} · {accountModal.studentId}</span>
+            </div>
+
+            {accountModal.paymentOptions?.map((opt) => (
+              <div key={opt.gateway} className="bg-gray-50 rounded-xl p-5 space-y-3">
+                <div className="flex justify-between text-xs uppercase tracking-wide text-gray-400 font-semibold">
+                  <span>{opt.gateway}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-500">Account Name</span>
+                  <span className="font-semibold">{opt.accountName}</span>
+                </div>
+                <div className="flex justify-between text-sm items-center">
+                  <span className="text-gray-500">Account Number</span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono font-bold text-lg text-gray-900">{opt.accountNumber}</span>
+                    <button onClick={() => copy(opt.accountNumber)} className="p-1.5 hover:bg-gray-200 rounded transition-colors">
+                      {copied ? <Check size={14} className="text-green-500" /> : <Copy size={14} className="text-gray-400" />}
+                    </button>
+                  </div>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-500">Bank</span>
+                  <span className="font-semibold">{opt.bankName}</span>
                 </div>
               </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Bank</span>
-                <span className="font-semibold">{accountModal.paymentDetails?.bankName}</span>
-              </div>
-            </div>
-            {accountModal.outstandingFees?.length > 0 && (
-              <div className="bg-amber-50 border border-amber-100 rounded-lg p-3">
-                <p className="text-xs font-semibold text-amber-700 mb-2">Outstanding Fees</p>
-                {accountModal.outstandingFees.map((fee, i) => (
-                  <div key={i} className="flex justify-between text-xs text-amber-700">
-                    <span>{fee.name}</span>
-                    <span className="font-bold">{formatCurrency(fee.balance)}</span>
+            ))}
+
+           {accountModal.outstandingFees?.length > 0 && (
+              <div className="bg-amber-50 border border-amber-100 rounded-lg p-3 space-y-3">
+                <p className="text-xs font-semibold text-amber-700">Outstanding Fees</p>
+                {accountModal.outstandingFees.map((fee) => (
+                  <div key={fee.assignmentId} className="text-xs text-amber-700 space-y-1">
+                    <div className="flex justify-between">
+                      <span>{fee.name}</span>
+                      <span className="font-bold">{formatCurrency(fee.balance)}</span>
+                    </div>
+                    {Object.entries(fee.amountToPay || {}).map(([gw, p]) => (
+                      <div key={gw} className="flex justify-between pl-3 text-amber-800">
+                        <span className="capitalize">Transfer via {gw}</span>
+                        <span className="font-bold">
+                          {formatCurrency(p.totalAmountToPay)}
+                          {p.platformFee > 0 && ` (incl. ${formatCurrency(p.platformFee)} service charge)`}
+                        </span>
+                      </div>
+                    ))}
                   </div>
                 ))}
-                <div className="flex justify-between text-xs text-amber-800 font-bold mt-2 pt-2 border-t border-amber-200">
+                <div className="flex justify-between text-xs text-amber-800 font-bold pt-2 border-t border-amber-200">
                   <span>Total Outstanding</span>
                   <span>{formatCurrency(accountModal.totalOutstanding)}</span>
                 </div>

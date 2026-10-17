@@ -31,11 +31,26 @@ const provisionOnNomba = async (student) => {
 };
 
 const provisionOnPaystack = async (student, { parentEmail, parentPhone } = {}) => {
-  const email = parentEmail || `${sanitizeReference(student._id.toString())}@parent.edupay.placeholder`;
+
+    if (env.nodeEnv === 'development' && env.paystack.mockMode) {
+    const fakeAccount = {
+      accountNumber: `90${Math.floor(10000000 + Math.random() * 89999999)}`,
+      accountName: `EduPay/${student.fullName}`,
+      bankName: 'Wema Bank (MOCK)',
+      bankCode: '035',
+      accountRef: `mock_${student._id}`,
+      accountHolderId: `mock_${student._id}`,
+      provisionedAt: new Date(),
+    };
+    return await saveVirtualAccount(student._id, 'paystack', fakeAccount);
+  }
+  
+  const email = parentEmail || `student${sanitizeReference(student._id.toString())}@mailinator.com`;
   const [firstName, ...rest] = student.fullName.trim().split(' ');
   const lastName = rest.join(' ') || firstName;
   const preferredBank = env.paystack.preferredBank || 'wema-bank';
 
+  console.log('Paystack provisioning email:', JSON.stringify(email), 'parentEmail was:', JSON.stringify(parentEmail));
   try {
     const account = await createDedicatedAccount({ email, firstName, lastName, phone: parentPhone || undefined, preferredBank });
     return await saveVirtualAccount(student._id, 'paystack', account);

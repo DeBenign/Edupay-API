@@ -1,8 +1,4 @@
 // src/services/reconciliation.service.js
-// Core reconciliation engine.
-// Uses atomic writes via MongoDB sessions when replica set is available,
-// falls back to sequential writes on standalone MongoDB (local dev).
-
 const mongoose = require('mongoose');
 const Payment       = require('../models/Payment');
 const FeeAssignment = require('../models/FeeAssignment');
@@ -16,15 +12,12 @@ const { checkReferralConversion } = require('./referral.service');
 // ─── Resolve payment status ──────────────────────────────────────────────────
 const resolveStatus = (amountExpected, totalPaid) => {
   const balance = amountExpected - totalPaid;
-  if (balance === 0)  return { status: 'paid',     reconciliationStatus: 'exact',        balance: 0,               overpayment: 0               };
-  if (balance > 0)    return { status: 'partial',  reconciliationStatus: 'underpayment', balance,                  overpayment: 0               };
-                      return { status: 'overpaid', reconciliationStatus: 'overpayment',  balance: 0,               overpayment: Math.abs(balance) };
+  if (balance === 0) return { status: 'paid',     reconciliationStatus: 'exact',        balance: 0,       overpayment: 0 };
+  if (balance > 0)   return { status: 'partial',  reconciliationStatus: 'underpayment', balance,          overpayment: 0 };
+                     return { status: 'overpaid', reconciliationStatus: 'overpayment',  balance: 0,       overpayment: Math.abs(balance) };
 };
 
 // ─── Atomic write with session fallback ──────────────────────────────────────
-// MongoDB standalone (local dev) does not support transactions.
-// Atlas M0 (free) does — so production works fully atomically.
-
 const atomicWrite = async (paymentData, assignmentId, assignmentUpdate) => {
   try {
     const session = await mongoose.startSession();
@@ -47,39 +40,42 @@ const atomicWrite = async (paymentData, assignmentId, assignmentUpdate) => {
     throw sessionErr;
   }
 };
+
 // ─── Main reconciliation entry point ─────────────────────────────────────────
 const processPayment = async ({
   accountNumber,
   amountPaid,
   reference,
-  narration    = null,
-  payerName    = null,
-  payerAccount = null,
-  payerBank    = null,
-  source       = 'webhook',
-  io           = null,
+  narration     = null,
+  payerName     = null,
+  payerAccount  = null,
+  payerBank     = null,
+  payerBankCode = null,
+  source        = 'webhook',
+  io            = null,
 }) => {
-  // 1. Idempotency — skip if already processed
+  // 1. Idempotency
   const existing = await Payment.findOne({ reference });
   if (existing) {
     console.log(`ℹ️  Payment ${reference} already processed. Skipping.`);
     return { skipped: true, reason: 'duplicate_reference', reference };
   }
 
-  // 2. Find student by virtual account number — check both gateways, note which matched
-const student = await Student.findOne({
-  isActive: true,
-  $or: [
-    { 'virtualAccounts.nomba.accountNumber': accountNumber },
-    { 'virtualAccounts.paystack.accountNumber': accountNumber },
-  ],
-});
-if (!student) {
-  console.warn(`⚠️  No student found for account: ${accountNumber}`);
-  return { skipped: true, reason: 'unknown_account', accountNumber };
-}
+  // 2. Find student by virtual account (either gateway) and note which one matched
+  const student = await Student.findOne({
+    isActive: true,
+    $or: [
+      { 'virtualAccounts.nomba.accountNumber': accountNumber },
+      { 'virtualAccounts.paystack.accountNumber': accountNumber },
+    ],
+  });
+  if (!student) {
+    console.warn(`⚠️  No student found for account: ${accountNumber}`);
+    return { skipped: true, reason: 'unknown_account', accountNumber };
+  }
+  const gateway = student.virtualAccounts?.nomba?.accountNumber === accountNumber ? 'nomba' : 'paystack';
 
-  // 3. Find oldest open fee assignment
+  // 3. Oldest open fee assignment
   const feeAssignment = await FeeAssignment.findOne({
     studentId: student._id,
     status:    { $in: ['unpaid', 'partial'] },
@@ -90,45 +86,33 @@ if (!student) {
   if (!feeAssignment) {
     console.warn(`⚠️  No open fee assignment for student: ${student.studentId}`);
     return {
-      skipped:     true,
-      reason:      'no_open_assignment',
-      studentId:   student._id,
-      studentName: student.fullName,
-      amountPaid,
-      reference,
+      skipped: true, reason: 'no_open_assignment',
+      studentId: student._id, studentName: student.fullName, amountPaid, reference,
     };
   }
 
-  // 4. Compute reconciliation
+  // 4. Platform fee comes off the real transfer first. Only the remainder
+  //    counts toward the school fee. Manual (cash) entries carry no fee,
+  //    since no gateway touched that money.
   const balanceBefore = feeAssignment.balance;
-  const totalNowPaid  = feeAssignment.totalPaid + amountPaid;
+  const { platformFee, netAmountForSchool, waived } = source === 'manual'
+    ? { platformFee: 0, netAmountForSchool: amountPaid, waived: false }
+    : await resolvePlatformFee({ amountPaid, gateway, schoolId: student.schoolId });
 
-  // 4a. Task 2iii — early full-payment discount (school absorbs this, not
-  // the platform: platformFee below is always computed on the real
-  // amountPaid, never on the undiscounted amountExpected).
-  const discount = checkEarlyPaymentDiscount(feeAssignment, amountPaid);
+  const totalNowPaid = feeAssignment.totalPaid + netAmountForSchool;
+
+  // 4a. Early full-payment discount (checked against what the school actually nets)
+  const discount = checkEarlyPaymentDiscount(feeAssignment, netAmountForSchool);
 
   let status, reconciliationStatus, balance, overpayment;
   if (discount.qualifies) {
-    status = 'paid';
-    reconciliationStatus = 'exact';
-    balance = 0;
-    overpayment = 0;
+    status = 'paid'; reconciliationStatus = 'exact'; balance = 0; overpayment = 0;
   } else {
     ({ status, reconciliationStatus, balance, overpayment } =
       resolveStatus(feeAssignment.amountExpected, totalNowPaid));
   }
 
-  // 4b. Task 1 + 4 — platform fee, matched to the gateway's own processing
-  // cost, netted out of what counts as the school's withdrawable revenue.
-  // Waived automatically if a referral reward (task 2i) is currently active.
-// Which gateway this specific payment came in on — determines platform fee rate
-  const gateway = student.virtualAccounts?.nomba?.accountNumber === accountNumber ? 'nomba' : 'paystack'; 
-  const { platformFee, netAmountForSchool, waived } = await resolvePlatformFee({
-    amountPaid, gateway, schoolId: student.schoolId,
-  });
-
-  // 5. Atomic write (with replica set fallback)
+  // 5. Atomic write
   const paymentData = {
     studentId:          student._id,
     schoolId:           student.schoolId,
@@ -161,15 +145,12 @@ if (!student) {
     overpayment,
     status,
     lastPaymentAt: new Date(),
-    ...(discount.qualifies && {
-      discountApplied: true,
-      discountAmount:  discount.discountAmount,
-    }),
+    ...(discount.qualifies && { discountApplied: true, discountAmount: discount.discountAmount }),
   };
 
   const savedPayment = await atomicWrite(paymentData, feeAssignment._id, assignmentUpdate);
 
-  // 6. Build result
+  // 6. Result
   const result = {
     skipped:              false,
     paymentId:            savedPayment._id,
@@ -201,7 +182,7 @@ if (!student) {
     earlyPaymentDiscountAmount:  discount.discountAmount,
   };
 
-  // 7. Real-time Socket.io event
+  // 7. Real-time event
   if (io) emitReconciliationEvent(io, student.schoolId.toString(), result);
 
   // 8. Notifications (non-blocking)
@@ -214,9 +195,8 @@ if (!student) {
   console.log(
     `${icons[reconciliationStatus]} [${reconciliationStatus.toUpperCase()}] ` +
     `${student.fullName} (${student.studentId}) | ` +
-    `Paid: ₦${amountPaid.toLocaleString()} | ` +
-    `Balance: ₦${balance.toLocaleString()} | ` +
-    `Status: ${status} | ref: ${reference}`
+    `Paid: ₦${amountPaid.toLocaleString()} | Fee: ₦${platformFee.toLocaleString()} | ` +
+    `Balance: ₦${balance.toLocaleString()} | Status: ${status} | ref: ${reference}`
   );
 
   return result;
@@ -227,10 +207,6 @@ const processManualPayment = async ({ studentId, amountPaid, reference, narratio
   const student = await Student.findById(studentId);
   if (!student) throw new Error('Student not found');
 
-  // Manual entries aren't tied to a real transfer, so there's no account
-  // number to resolve gateway from — use whichever is explicitly passed,
-  // else whichever account actually exists (prefer nomba if both do, since
-  // that's still the platform's primary rail).
   const resolvedGateway = gateway
     || (student.virtualAccounts?.nomba?.accountNumber && 'nomba')
     || (student.virtualAccounts?.paystack?.accountNumber && 'paystack');
@@ -238,18 +214,15 @@ const processManualPayment = async ({ studentId, amountPaid, reference, narratio
   if (!resolvedGateway) throw new Error('Student has no virtual account on either gateway');
 
   const accountNumber = student.virtualAccounts[resolvedGateway].accountNumber;
-
-  return processPayment({
-    accountNumber, amountPaid, reference, narration, source: 'manual', io,
-  });
+  return processPayment({ accountNumber, amountPaid, reference, narration, source: 'manual', io });
 };
 
 // ─── Reconciliation summary for one assignment ────────────────────────────────
 const getReconciliationSummary = async (feeAssignmentId) => {
   const [assignment, payments] = await Promise.all([
-      FeeAssignment.findById(feeAssignmentId)
-        .populate('studentId', 'fullName studentId class virtualAccounts')  // was 'virtualAccount'
-        .populate('feeStructureId', 'name term academicSession amount dueDate'),
+    FeeAssignment.findById(feeAssignmentId)
+      .populate('studentId', 'fullName studentId class virtualAccounts')
+      .populate('feeStructureId', 'name term academicSession amount dueDate'),
     Payment.find({ feeAssignmentId }).sort({ processedAt: 1 }),
   ]);
   if (!assignment) throw new Error('Fee assignment not found');
@@ -263,8 +236,8 @@ const getReconciliationSummary = async (feeAssignmentId) => {
       overpayment:    assignment.overpayment,
       status:         assignment.status,
       paymentCount:   payments.length,
-      firstPaymentAt: payments[0]?.processedAt     || null,
-      lastPaymentAt:  payments[payments.length-1]?.processedAt || null,
+      firstPaymentAt: payments[0]?.processedAt || null,
+      lastPaymentAt:  payments[payments.length - 1]?.processedAt || null,
     },
   };
 };

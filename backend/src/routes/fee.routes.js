@@ -3,7 +3,7 @@ const router  = express.Router();
 const {
   createFeeStructure, getFeeStructures, getFeeStructure,
   updateFeeStructure, assignFeeToStudent, assignFeeToClass,
-  getStudentFeeAssignments,
+  getStudentFeeAssignments, adjustFeeAmount,
 } = require('../controllers/fee.controller');
 const { protect }   = require('../middleware/auth.middleware');
 const { authorize } = require('../middleware/role.middleware');
@@ -17,5 +17,6 @@ router.patch('/structures/:id',       protect, admin, updateFeeStructure);
 router.post('/assign',                protect, staff, assignFeeToStudent);
 router.post('/assign-class',          protect, staff, assignFeeToClass);
 router.get('/assignments/:studentId', protect, authorize('admin','bursar','parent'), getStudentFeeAssignments);
+router.patch('/assignments/:id/adjust', protect, admin, adjustFeeAmount);
 
 module.exports = router;

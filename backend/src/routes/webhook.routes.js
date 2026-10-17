@@ -5,18 +5,22 @@ const { handleNombaWebhook, handlePaystackWebhook, getWebhookLogs, replayWebhook
 const { protect } = require('../middleware/auth.middleware');
 const { authorize } = require('../middleware/role.middleware');
 
-// Public — Nomba calls this (signature already verified by middleware in app.js)
-router.post('/nomba', handleNombaWebhook);
-
-// Public — Paystack calls this (signature already verified by middleware in app.js)
+// Public — signature verified by middleware in app.js
+router.post('/nomba',    handleNombaWebhook);
 router.post('/paystack', handlePaystackWebhook);
 
-// Protected — admin/bursar only
+// Protected
 router.get('/logs',        protect, authorize('admin', 'bursar'), getWebhookLogs);
 router.post('/replay/:id', protect, authorize('admin'),           replayWebhook);
-router.post('/debug/sync-now', protect, authorize('admin'), async (req, res) => {
-  const { syncTransactions } = require('../services/transaction.service');
-  const result = await syncTransactions(null);
-  res.json(result);
-});
+
+// Dev-only: never exposed in production
+if (process.env.NODE_ENV !== 'production') {
+  router.post('/debug/sync-now', protect, authorize('admin'), async (req, res) => {
+    try {
+      const { syncTransactions } = require('../services/transaction.service');
+      res.json(await syncTransactions(null));
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+}
+
 module.exports = router;

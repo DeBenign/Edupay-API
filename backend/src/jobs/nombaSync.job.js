@@ -1,0 +1,1 @@
+// "Nomba authentication failed": it suggests the earlier 404 may have been about the sub-account specifically, while this is a token-level auth failure — possibly NOMBA_CLIENT_ID / NOMBA_SECRET_KEY themselves being wrong, expired, or not loaded.

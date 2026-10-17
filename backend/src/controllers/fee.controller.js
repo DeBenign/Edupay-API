@@ -55,6 +55,8 @@ const assignFeeToStudent = async (req, res) => {
     const [student, fs] = await Promise.all([Student.findById(studentId), FeeStructure.findById(feeStructureId)]);
     if (!student) return notFound(res, 'Student not found');
     if (!fs)      return notFound(res, 'Fee structure not found');
+    const mine = req.user.schoolId?.toString();
+    if (student.schoolId.toString() !== mine || fs.schoolId.toString() !== mine) return forbidden(res, 'Access denied');
     const existing = await FeeAssignment.findOne({ studentId, feeStructureId });
     if (existing) return badRequest(res, 'Fee already assigned to this student for this term');
     const assignment = await FeeAssignment.create({ studentId, schoolId: req.user.schoolId, feeStructureId, amountExpected: fs.amount, balance: fs.amount });
@@ -68,6 +70,7 @@ const assignFeeToClass = async (req, res) => {
     if (!feeStructureId) return badRequest(res, 'feeStructureId is required');
     const fs = await FeeStructure.findById(feeStructureId);
     if (!fs) return notFound(res, 'Fee structure not found');
+    if (fs.schoolId.toString() !== req.user.schoolId?.toString()) return forbidden(res, 'Access denied');
     const students = await Student.find({ schoolId: req.user.schoolId, class: fs.class, isActive: true });
     if (!students.length) return notFound(res, `No active students found in class "${fs.class}"`);
     const existingAssignments = await FeeAssignment.find({ feeStructureId, studentId: { $in: students.map(s => s._id) } }).select('studentId');
@@ -90,4 +93,36 @@ const getStudentFeeAssignments = async (req, res) => {
   } catch (err) { return error(res); }
 };
 
-module.exports = { createFeeStructure, getFeeStructures, getFeeStructure, updateFeeStructure, assignFeeToStudent, assignFeeToClass, getStudentFeeAssignments };
+// src/controllers/fee.controller.js
+const adjustFeeAmount = async (req, res) => {
+  try {
+    const newAmount = Number(req.body.newAmountExpected);
+    const { reason } = req.body;
+    if (!Number.isFinite(newAmount) || newAmount <= 0)
+      return badRequest(res, 'newAmountExpected must be a number greater than 0');
+    if (!reason?.trim()) return badRequest(res, 'reason is required for a manual fee adjustment (audit trail)');
+
+    const assignment = await FeeAssignment.findById(req.params.id);
+    if (!assignment) return notFound(res, 'Fee assignment not found');
+    if (assignment.schoolId.toString() !== req.user.schoolId?.toString()) return forbidden(res, 'Access denied');
+    if (['paid', 'overpaid'].includes(assignment.status))
+      return badRequest(res, 'Cannot adjust an assignment that is already fully paid or overpaid');
+
+    const oldAmount = assignment.amountExpected;
+    const diff = newAmount - assignment.totalPaid;
+
+    assignment.amountExpected = newAmount;
+    assignment.balance        = Math.max(diff, 0);
+    assignment.overpayment    = Math.max(-diff, 0);
+    assignment.status = diff > 0 ? (assignment.totalPaid > 0 ? 'partial' : 'unpaid')
+                      : diff === 0 ? 'paid' : 'overpaid';
+    if (diff < 0) assignment.overpaymentResolution = 'pending';
+
+    assignment.notes = `${assignment.notes ? assignment.notes + ' | ' : ''}Adjusted by ${req.user.fullName || req.user._id} from ₦${oldAmount} to ₦${newAmount} (${new Date().toISOString()}): ${reason.trim()}`;
+    await assignment.save();
+
+    return success(res, { assignment }, 'Fee amount adjusted successfully');
+  } catch (err) { return error(res, err.message); }
+};
+
+module.exports = { createFeeStructure, getFeeStructures, getFeeStructure, updateFeeStructure, assignFeeToStudent, assignFeeToClass, getStudentFeeAssignments, adjustFeeAmount };

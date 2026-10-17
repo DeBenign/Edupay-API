@@ -1,128 +1,135 @@
 // src/controllers/webhook.controller.js
-// ─────────────────────────────────────────────────────────────────────────────
-// Entry point for all Nomba webhook events.
-// Every inbound payment hits this endpoint first.
-//
-// Flow:
-//   Nomba fires event
-//     → middleware verifies HMAC signature
-//     → controller logs the raw event
-//     → extracts payment fields
-//     → calls reconciliation engine
-//     → responds 200 immediately (Nomba needs a fast ACK)
-// ─────────────────────────────────────────────────────────────────────────────
-
 const { WebhookLog } = require('../models/WebhookLog');
 const { processPayment } = require('../services/reconciliation.service');
 const { success, error } = require('../utils/apiResponse');
+const { findStudentByAccountNumber } = require('../services/virtualAccount.service');
 
-// ─── Known Nomba event types we care about ────────────────────────────────────
-const CREDIT_EVENTS = new Set([
-  'virtualaccount.credit',   // confirmed inbound transfer to a virtual account
-  'transfer.credit',         // alternative event name used in some Nomba versions
-  'transaction.successful',  // generic successful transaction
+const NOMBA_CREDIT_EVENTS = new Set([
+  'virtualaccount.credit',
+  'transfer.credit',
+  'transaction.successful',
 ]);
+const PAYSTACK_CREDIT_EVENTS = new Set(['charge.success']);
 
-// ─── POST /api/webhooks/nomba ─────────────────────────────────────────────────
-const handleNombaWebhook = async (req, res) => {
-  // ── ACK immediately — Nomba retries if we take too long ──────────────────
-  // We respond 200 before processing so Nomba never marks our endpoint as down.
+// ─── Field extraction (one place per gateway, shared by live handlers + replay) ─
+const extractNombaPayment = (payload) => {
+  const data = payload?.data || payload;
+  return {
+    accountNumber: data?.destinationAccountNumber || data?.accountNumber || data?.virtualAccountNumber || null,
+    amountPaid:    parseFloat(data?.amount || data?.transactionAmount || 0),
+    reference:     data?.reference || data?.transactionReference || data?.id || null,
+    narration:     data?.narration || data?.description || null,
+    payerName:     data?.sourceAccountName || data?.senderName || null,
+    payerAccount:  data?.sourceAccountNumber || null,
+    payerBank:     data?.sourceBankName || data?.senderBank || null,
+    payerBankCode: data?.sourceBankCode || data?.senderBankCode || null,
+  };
+};
+
+const extractPaystackPayment = (payload) => {
+  const data = payload?.data || {};
+  const auth = data.authorization || {};
+  const customerName = data.customer?.first_name
+    ? `${data.customer.first_name} ${data.customer.last_name || ''}`.trim()
+    : null;
+  return {
+    accountNumber: auth.receiver_bank_account_number || data.dedicated_account?.account_number || null,
+    amountPaid:    data.amount ? data.amount / 100 : 0, // Paystack sends kobo
+    reference:     data.reference || null,
+    narration:     auth.narration || data.narration || null,
+    payerName:     auth.sender_name || customerName,
+    payerAccount:  auth.sender_bank_account_number || null,
+    payerBank:     auth.sender_bank || null,
+    payerBankCode: auth.sender_bank_code || null,
+  };
+};
+
+// ─── Shared: validate → reconcile → update the audit log ─────────────────────
+const runReconciliation = async ({ fields, webhookLog, io }) => {
+  const { accountNumber, amountPaid, reference } = fields;
+
+  if (!accountNumber || !amountPaid || !reference) {
+    const msg = 'Missing required fields: accountNumber, amountPaid, or reference';
+    console.error('❌ Webhook:', msg, { accountNumber, amountPaid, reference });
+    if (webhookLog) {
+      webhookLog.processingError = msg;
+      await webhookLog.save().catch(() => {});
+    }
+    return { skipped: true, reason: 'missing_fields' };
+  }
+
+  const owner = await findStudentByAccountNumber(accountNumber).catch(() => null);
+  if (webhookLog && owner) webhookLog.schoolId = owner.schoolId;
+
+  try {
+    const result = await processPayment({ ...fields, source: 'webhook', io });
+
+    if (webhookLog) {
+      // Leave failed/skipped events unprocessed so they stay replayable
+      webhookLog.processed = !result.skipped || result.reason === 'duplicate_reference';
+      webhookLog.processingError = result.skipped ? `Skipped: ${result.reason}` : null;
+      await webhookLog.save().catch(() => {});
+    }
+    if (result.skipped) console.log(`ℹ️  Webhook ${reference} skipped: ${result.reason}`);
+    return result;
+  } catch (err) {
+    console.error(`❌ Webhook processing failed [${reference}]:`, err.message);
+    if (webhookLog) {
+      webhookLog.processingError = err.message;
+      await webhookLog.save().catch(() => {});
+    }
+    return { skipped: true, reason: 'processing_error', error: err.message };
+  }
+};
+
+// ─── Live handler factory (ACK first, then process) ──────────────────────────
+const makeWebhookHandler = ({ creditEvents, extract, signatureHeader, label }) => async (req, res) => {
   res.status(200).json({ received: true });
 
-  // ── Everything after this is async (fire-and-forget from Nomba's view) ───
   const payload   = req.body;
-  const signature = req.headers['x-nomba-signature'] || null;
   const eventType = payload?.event || payload?.type || 'unknown';
 
-  // 1. Log the raw webhook (for audit + replay)
   let webhookLog;
   try {
     webhookLog = await WebhookLog.create({
       event:     eventType,
       payload,
-      signature,
+      signature: req.headers[signatureHeader] || null,
       verified:  true, // middleware already verified before we got here
       processed: false,
     });
   } catch (logErr) {
-    console.error('❌ Failed to log webhook:', logErr.message);
-    // Continue processing even if logging fails
+    console.error(`❌ Failed to log ${label} webhook:`, logErr.message);
   }
 
-  // 2. Only process credit events
-  if (!CREDIT_EVENTS.has(eventType)) {
-    console.log(`ℹ️  Webhook event "${eventType}" — not a credit event. Ignoring.`);
+  if (!creditEvents.has(eventType)) {
+    console.log(`ℹ️  ${label} webhook event "${eventType}" — not a credit event. Ignoring.`);
     if (webhookLog) {
-      webhookLog.processed  = true;
+      webhookLog.processed = true;
       webhookLog.processingError = `Non-credit event: ${eventType}`;
       await webhookLog.save().catch(() => {});
     }
     return;
   }
 
-  // 3. Extract payment fields from Nomba payload
-  //    Nomba's payload structure (adjust field names if their schema differs):
-  const data          = payload?.data || payload;
-  const accountNumber = data?.destinationAccountNumber ||
-                        data?.accountNumber            ||
-                        data?.virtualAccountNumber;
-  const amountPaid    = parseFloat(data?.amount || data?.transactionAmount || 0);
-  const reference     = data?.reference         ||
-                        data?.transactionReference ||
-                        data?.id;
-  const narration     = data?.narration         || data?.description || null;
-  const payerName     = data?.sourceAccountName || data?.senderName  || null;
-  const payerAccount  = data?.sourceAccountNumber || null;
-  const payerBank     = data?.sourceBankName    || data?.senderBank  || null;
-
-  // 4. Validate required fields
-  if (!accountNumber || !amountPaid || !reference) {
-    console.error('❌ Webhook missing required fields:', { accountNumber, amountPaid, reference });
-    if (webhookLog) {
-      webhookLog.processingError = 'Missing required fields: accountNumber, amountPaid, or reference';
-      await webhookLog.save().catch(() => {});
-    }
-    return;
-  }
-
-  // 5. Get the Socket.io instance (attached in server.js)
-  const io = req.app.locals.io || null;
-
-  // 6. Run reconciliation
-  try {
-    const result = await processPayment({
-      accountNumber,
-      amountPaid,
-      reference,
-      narration,
-      payerName,
-      payerAccount,
-      payerBank,
-      source: 'webhook',
-      io,
-    });
-
-    // 7. Mark webhook as processed
-    if (webhookLog) {
-      webhookLog.processed = true;
-      await webhookLog.save().catch(() => {});
-    }
-
-    if (result.skipped) {
-      console.log(`ℹ️  Webhook ${reference} skipped: ${result.reason}`);
-    }
-
-  } catch (err) {
-    console.error(`❌ Webhook processing failed [${reference}]:`, err.message);
-
-    if (webhookLog) {
-      webhookLog.processingError = err.message;
-      await webhookLog.save().catch(() => {});
-    }
-  }
+  await runReconciliation({
+    fields: extract(payload),
+    webhookLog,
+    io: req.app.locals.io || null,
+  });
 };
 
-// ─── GET /api/webhooks/logs ───────────────────────────────────────────────────
+const handleNombaWebhook = makeWebhookHandler({
+  creditEvents: NOMBA_CREDIT_EVENTS, extract: extractNombaPayment,
+  signatureHeader: 'x-nomba-signature', label: 'Nomba',
+});
+
+const handlePaystackWebhook = makeWebhookHandler({
+  creditEvents: PAYSTACK_CREDIT_EVENTS, extract: extractPaystackPayment,
+  signatureHeader: 'x-paystack-signature', label: 'Paystack',
+});
+
+// ─── getWebhookLogs: KEEP YOUR EXISTING FUNCTION UNCHANGED ───────────────────
 // Bursar/Admin can review webhook history for debugging
 const getWebhookLogs = async (req, res) => {
   try {
@@ -130,7 +137,7 @@ const getWebhookLogs = async (req, res) => {
     const limit = parseInt(req.query.limit, 10) || 20;
     const skip  = (page - 1) * limit;
 
-    const filter = {};
+    const filter = { schoolId: req.user.schoolId };
     if (req.query.processed !== undefined) filter.processed = req.query.processed === 'true';
     if (req.query.event)                   filter.event     = req.query.event;
     if (req.query.hasError === 'true')     filter.processingError = { $ne: null };
@@ -155,132 +162,32 @@ const getWebhookLogs = async (req, res) => {
   }
 };
 
+
+
 // ─── POST /api/webhooks/replay/:id ───────────────────────────────────────────
-// Admin can replay a failed webhook — useful for debugging + recovery
+// Original reference is reused on purpose: the duplicate check in
+// processPayment makes replaying an already-credited payment a safe no-op.
 const replayWebhook = async (req, res) => {
   try {
     const webhookLog = await WebhookLog.findById(req.params.id);
     if (!webhookLog) return error(res, 'Webhook log not found', 404);
+    if (webhookLog.schoolId?.toString() !== req.user.schoolId?.toString()) return error(res, 'Access denied', 403);
 
-    const payload       = webhookLog.payload;
-    const data          = payload?.data || payload;
-    const accountNumber = data?.destinationAccountNumber || data?.accountNumber;
-    const amountPaid    = parseFloat(data?.amount || 0);
-    const reference     = data?.reference || data?.transactionReference;
-
-    if (!accountNumber || !amountPaid || !reference) {
-      return error(res, 'Cannot replay — missing required fields in stored payload', 400);
-    }
-
-    const io     = req.app.locals.io || null;
-    const result = await processPayment({
-      accountNumber,
-      amountPaid,
-      reference: `${reference}_replay_${Date.now()}`, // new ref to bypass idempotency
-      narration: 'Manually replayed webhook',
-      source:    'manual',
-      io,
+    const extract = PAYSTACK_CREDIT_EVENTS.has(webhookLog.event) ? extractPaystackPayment : extractNombaPayment;
+    const result = await runReconciliation({
+      fields: extract(webhookLog.payload),
+      webhookLog,
+      io: req.app.locals.io || null,
     });
+
+    if (result.reason === 'duplicate_reference') return error(res, 'Already processed, nothing to replay', 400);
+    if (result.reason === 'missing_fields')      return error(res, 'Cannot replay: missing required fields in stored payload', 400);
+    if (result.skipped)                          return error(res, `Replay skipped: ${result.reason}`, 400);
 
     return success(res, { result }, 'Webhook replayed successfully');
   } catch (err) {
     console.error('❌ replayWebhook error:', err.message);
     return error(res, err.message);
-  }
-};
-
-// ─── POST /api/webhooks/paystack ───────────────────────────────────────────────
-// Mirrors handleNombaWebhook exactly — same ACK-first pattern, same
-// reconciliation engine, same WebhookLog audit trail. Only the field
-// extraction differs because Paystack's payload shape is different.
-const PAYSTACK_CREDIT_EVENTS = new Set([
-  'charge.success',           // dedicated virtual account credit
-  'dedicatedaccount.assign.success',
-]);
-
-const handlePaystackWebhook = async (req, res) => {
-  res.status(200).json({ received: true });
-
-  const payload   = req.body;
-  const eventType = payload?.event || 'unknown';
-
-  let webhookLog;
-  try {
-    webhookLog = await WebhookLog.create({
-      event:     eventType,
-      payload,
-      signature: req.headers['x-paystack-signature'] || null,
-      verified:  true, // middleware already verified before we got here
-      processed: false,
-    });
-  } catch (logErr) {
-    console.error('❌ Failed to log Paystack webhook:', logErr.message);
-  }
-
-  if (!PAYSTACK_CREDIT_EVENTS.has(eventType)) {
-    console.log(`ℹ️  Paystack webhook event "${eventType}" — not a credit event. Ignoring.`);
-    if (webhookLog) {
-      webhookLog.processed = true;
-      webhookLog.processingError = `Non-credit event: ${eventType}`;
-      await webhookLog.save().catch(() => {});
-    }
-    return;
-  }
-
-  // Paystack's charge.success payload for a DVA credit nests the receiving
-  // account under data.authorization / data.metadata depending on channel —
-  // dedicated_account is the field to trust for transfer-in charges.
-  const data          = payload?.data || {};
-  const accountNumber = data?.authorization?.receiver_bank_account_number
-                        || data?.dedicated_account?.account_number
-                        || null;
-  const amountPaid    = data?.amount ? data.amount / 100 : 0; // Paystack sends kobo
-  const reference     = data?.reference || null;
-  const narration     = data?.narration || null;
-  const payerName     = data?.customer?.first_name
-                        ? `${data.customer.first_name} ${data.customer.last_name || ''}`.trim()
-                        : null;
-  const payerAccount  = data?.authorization?.sender_bank_account_number || null;
-  const payerBank     = data?.authorization?.sender_bank || null;
-
-  if (!accountNumber || !amountPaid || !reference) {
-    console.error('❌ Paystack webhook missing required fields:', { accountNumber, amountPaid, reference });
-    if (webhookLog) {
-      webhookLog.processingError = 'Missing required fields: accountNumber, amountPaid, or reference';
-      await webhookLog.save().catch(() => {});
-    }
-    return;
-  }
-
-  const io = req.app.locals.io || null;
-
-  try {
-    const result = await processPayment({
-      accountNumber,
-      amountPaid,
-      reference,
-      narration,
-      payerName,
-      payerAccount,
-      payerBank,
-      source: 'webhook',
-      io,
-    });
-
-    if (webhookLog) {
-      webhookLog.processed = true;
-      await webhookLog.save().catch(() => {});
-    }
-
-    if (result.skipped) {
-      console.log(`ℹ️  Paystack webhook ${reference} skipped: ${result.reason}`);
-    }
-  } catch (err) {
-    console.error(`❌ Paystack webhook processing failed [${reference}]:`, err.message);
-    if (webhookLog) {
-      webhookLog.processingError = err.message;
-      await webhookLog.save().catch(() => {});
-    }
   }
 };
 

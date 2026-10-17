@@ -52,6 +52,7 @@ module.exports = {
       // and reconciliation without touching a real bank. Leave unset in
       // production — defaults to 'wema-bank'.
       preferredBank: process.env.PAYSTACK_PREFERRED_BANK || null,
+      mockMode:      process.env.PAYSTACK_MOCK_MODE === 'true',
     },
     // Which gateway new students are provisioned on by default.
     // Switch this to 'paystack' once the pilot school is validated.
