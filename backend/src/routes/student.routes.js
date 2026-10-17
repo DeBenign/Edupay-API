@@ -2,7 +2,7 @@ const express = require('express');
 const router  = express.Router();
 const {
   enrollStudent, getStudents, getStudent, updateStudent,
-  deactivateStudent, retryAccountProvisioning, getStudentAccount,
+  deactivateStudent, retryAccountProvisioning, getStudentAccount, promoteClass
 } = require('../controllers/student.controller');
 const { protect }   = require('../middleware/auth.middleware');
 const { authorize } = require('../middleware/role.middleware');

@@ -316,6 +316,12 @@ const retryProvision = async (studentId) => {
                         </span>
                       </div>
                     ))}
+                    {fee.earlyPayment && Object.entries(fee.earlyPayment.amountToPay).map(([gw, p]) => (
+                    <div key={`early-${gw}`} className="flex justify-between pl-3 text-green-700">
+                      <span className="capitalize">Pay by {formatDate(fee.earlyPayment.deadline)} via {gw}</span>
+                      <span className="font-bold">{formatCurrency(p.totalAmountToPay)} (save {formatCurrency(p.youSave)})</span>
+                    </div>
+                  ))}
                   </div>
                 ))}
                 <div className="flex justify-between text-xs text-amber-800 font-bold pt-2 border-t border-amber-200">

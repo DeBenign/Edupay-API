@@ -1,24 +1,39 @@
 // src/pages/parent/Dashboard.jsx
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { parentAPI } from '../../api'
+import { parentAPI, paymentAPI } from '../../api'
 import { StatusBadge, Spinner, Alert, EmptyState } from '../../components/ui'
 import { formatCurrency, formatDate } from '../../utils/formatters'
-import { GraduationCap, Copy, Check, ArrowRight, AlertCircle, BookOpen, Bell } from 'lucide-react'
+import { Copy, Check, ArrowRight, AlertCircle, BookOpen } from 'lucide-react'
 
 export default function ParentDashboard() {
   const navigate = useNavigate()
-  const [data,    setData]    = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [error,   setError]   = useState('')
-  const [copied,  setCopied]  = useState(null)
+  const [data,      setData]      = useState(null)
+  const [loading,   setLoading]   = useState(true)
+  const [error,     setError]     = useState('')
+  const [copied,    setCopied]    = useState(null)
+  const [resolving, setResolving] = useState(null)
+  const [notice,    setNotice]    = useState(null)
 
-  useEffect(() => {
+  const load = () =>
     parentAPI.dashboard()
       .then(res => setData(res.data.data))
       .catch(() => setError('Could not load your dashboard'))
       .finally(() => setLoading(false))
-  }, [])
+
+  useEffect(() => { load() }, [])
+
+  const resolveOverpayment = async (assignmentId, choice) => {
+    if (resolving) return
+    setResolving(assignmentId)
+    try {
+      const res = await paymentAPI.resolveOverpayment(assignmentId, { choice })
+      setNotice({ type: 'success', text: res.data?.message || 'Done' })
+      await load()
+    } catch (err) {
+      setNotice({ type: 'error', text: err.response?.data?.message || 'Could not complete this request' })
+    } finally { setResolving(null) }
+  }
 
   const copy = (accountNumber, id) => {
     navigator.clipboard.writeText(accountNumber)
@@ -39,6 +54,8 @@ export default function ParentDashboard() {
         <h1 className="page-title">My Children</h1>
         <p className="page-sub">Track fee payments and account details</p>
       </div>
+
+      {notice && <Alert type={notice.type} message={notice.text} onClose={() => setNotice(null)} />}
 
       {/* Summary strip */}
       {summary?.totalChildren > 0 && (
@@ -138,20 +155,81 @@ export default function ParentDashboard() {
               <div className="px-5 py-4 text-sm text-gray-400">No fees assigned for this term yet.</div>
             )}
 
-            {/* Account number */}
-            {child.accountNumber && (
-              <div className="px-5 py-3 bg-gray-50 border-t border-gray-100">
-                <p className="text-xs text-gray-500 mb-1">Pay fees to this account:</p>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <span className="font-mono text-sm font-bold text-gray-900">{child.accountNumber}</span>
-                    <span className="text-xs text-gray-400 ml-2">· {child.bankName}</span>
+            {/* Overpayments waiting for a decision */}
+            {child.overpayments?.map(o => (
+              <div key={o.assignmentId} className="px-5 py-3 bg-purple-50 border-t border-purple-100 space-y-2">
+                <p className="text-sm text-purple-800">
+                  You overpaid <strong>{formatCurrency(o.amount)}</strong> on {o.name}. What should we do with it?
+                </p>
+                {o.resolution === 'refund_requested' ? (
+                  <p className="text-xs text-purple-700">Refund requested. Waiting for the school to approve it.</p>
+                ) : (
+                  <div className="flex gap-2">
+                    <button className="btn-secondary text-xs" disabled={resolving === o.assignmentId}
+                      onClick={() => resolveOverpayment(o.assignmentId, 'refund')}>
+                      Refund to the paying account
+                    </button>
+                    <button className="btn-primary text-xs" disabled={resolving === o.assignmentId}
+                      onClick={() => resolveOverpayment(o.assignmentId, 'credit_next_term')}>
+                      Credit to next term
+                    </button>
                   </div>
-                  <button onClick={() => copy(child.accountNumber, child._id)}
-                    className="btn-ghost py-1.5 px-2 text-xs gap-1.5">
-                    {copied === child._id ? <><Check size={13} className="text-green-500" /> Copied</> : <><Copy size={13} /> Copy</>}
-                  </button>
+                )}
+              </div>
+            ))}
+
+            {/* Payment accounts */}
+            {(() => {
+              const options = child.paymentOptions?.length
+                ? child.paymentOptions
+                : child.accountNumber ? [{ gateway: 'account', accountNumber: child.accountNumber, bankName: child.bankName }] : []
+              if (!options.length) return null
+              return (
+                <div className="px-5 py-3 bg-gray-50 border-t border-gray-100 space-y-2">
+                  <p className="text-xs text-gray-500">Pay fees to {options.length > 1 ? 'either account' : 'this account'}:</p>
+                  {options.map(opt => {
+                    const key = `${child._id}-${opt.gateway}`
+                    return (
+                      <div key={key} className="flex items-center justify-between">
+                        <div>
+                          <span className="font-mono text-sm font-bold text-gray-900">{opt.accountNumber}</span>
+                          <span className="text-xs text-gray-400 ml-2">· {opt.bankName}</span>
+                        </div>
+                        <button onClick={() => copy(opt.accountNumber, key)} className="btn-ghost py-1.5 px-2 text-xs gap-1.5">
+                          {copied === key ? <><Check size={13} className="text-green-500" /> Copied</> : <><Copy size={13} /> Copy</>}
+                        </button>
+                      </div>
+                    )
+                  })}
                 </div>
+              )
+            })()}
+
+            {/* What to transfer */}
+            {child.outstandingFees?.length > 0 && (
+              <div className="px-5 py-3 bg-amber-50 border-t border-amber-100 space-y-2 text-xs text-amber-800">
+                <p className="font-semibold">Amount to transfer</p>
+                {child.outstandingFees.map(fee => (
+                  <div key={fee.assignmentId} className="space-y-1">
+                    <p>{fee.name}</p>
+                    {Object.entries(fee.amountToPay || {}).map(([gw, p]) => (
+                      <div key={gw} className="flex justify-between pl-3">
+                        <span className="capitalize">via {gw}</span>
+                        <span className="font-bold">
+                          {formatCurrency(p.totalAmountToPay)}
+                          {p.platformFee > 0 && ` (incl. ${formatCurrency(p.platformFee)} service charge)`}
+                        </span>
+                      </div>
+                    ))}
+                    {fee.earlyPayment && Object.entries(fee.earlyPayment.amountToPay).map(([gw, p]) => (
+                      <div key={`early-${gw}`} className="flex justify-between pl-3 text-green-700">
+                        <span className="capitalize">Pay by {formatDate(fee.earlyPayment.deadline)} via {gw}</span>
+                        <span className="font-bold">{formatCurrency(p.totalAmountToPay)} (save {formatCurrency(p.youSave)})</span>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+                <p className="text-amber-700">The service charge keeps the school's fee whole. Paying less leaves a small balance, and each instalment carries its own service charge.</p>
               </div>
             )}
 

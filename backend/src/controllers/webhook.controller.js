@@ -1,13 +1,13 @@
 // src/controllers/webhook.controller.js
 const { WebhookLog } = require('../models/WebhookLog');
 const { processPayment } = require('../services/reconciliation.service');
-const { success, error } = require('../utils/apiResponse');
 const { findStudentByAccountNumber } = require('../services/virtualAccount.service');
+const { success, error } = require('../utils/apiResponse');
 
-const NOMBA_CREDIT_EVENTS = new Set(['payment_success']);
+const NOMBA_CREDIT_EVENTS    = new Set(['payment_success']);
 const PAYSTACK_CREDIT_EVENTS = new Set(['charge.success']);
 
-// ─── Field extraction (one place per gateway, shared by live handlers + replay) ─
+// ─── Field extraction (shared by live handlers and replay) ───────────────────
 const extractNombaPayment = (payload) => {
   const tx = payload?.data?.transaction || {};
   const customer = payload?.data?.customer || {};
@@ -39,10 +39,11 @@ const extractPaystackPayment = (payload) => {
     payerAccount:  auth.sender_bank_account_number || null,
     payerBank:     auth.sender_bank || null,
     payerBankCode: auth.sender_bank_code || null,
+    gatewayFee:    data.fees ? data.fees / 100 : 0, // unverified field name
   };
 };
 
-// ─── Shared: validate → reconcile → update the audit log ─────────────────────
+// ─── Shared: validate → tag school → reconcile → update the audit log ────────
 const runReconciliation = async ({ fields, webhookLog, io }) => {
   const { accountNumber, amountPaid, reference } = fields;
 
@@ -56,6 +57,7 @@ const runReconciliation = async ({ fields, webhookLog, io }) => {
     return { skipped: true, reason: 'missing_fields' };
   }
 
+  // Tag the log with the owning school so logs and replays can be scoped per school
   const owner = await findStudentByAccountNumber(accountNumber).catch(() => null);
   if (webhookLog && owner) webhookLog.schoolId = owner.schoolId;
 
@@ -81,11 +83,11 @@ const runReconciliation = async ({ fields, webhookLog, io }) => {
 };
 
 // ─── Live handler factory (ACK first, then process) ──────────────────────────
-const makeWebhookHandler = ({ creditEvents, extract, signatureHeader, label }) => async (req, res) => {
+const makeWebhookHandler = ({ creditEvents, extract, signatureHeader, label, isRelevant }) => async (req, res) => {
   res.status(200).json({ received: true });
 
   const payload   = req.body;
-  const eventType = payload?.event || payload?.type || 'unknown';
+  const eventType = payload?.event_type || payload?.event || 'unknown'; // Nomba: event_type, Paystack: event
 
   let webhookLog;
   try {
@@ -93,7 +95,7 @@ const makeWebhookHandler = ({ creditEvents, extract, signatureHeader, label }) =
       event:     eventType,
       payload,
       signature: req.headers[signatureHeader] || null,
-      verified:  true, // middleware already verified before we got here
+      verified:  true, // verified by middleware before we got here
       processed: false,
     });
   } catch (logErr) {
@@ -101,8 +103,16 @@ const makeWebhookHandler = ({ creditEvents, extract, signatureHeader, label }) =
   }
 
   if (!creditEvents.has(eventType)) {
-    console.log(`ℹ️  ${label} webhook event "${eventType}" — not a credit event. Ignoring.`);
-     if (isRelevant && !isRelevant(payload)) {
+    console.log(`ℹ️  ${label} webhook event "${eventType}" is not a credit event. Ignoring.`);
+    if (webhookLog) {
+      webhookLog.processed = true;
+      webhookLog.processingError = `Non-credit event: ${eventType}`;
+      await webhookLog.save().catch(() => {});
+    }
+    return;
+  }
+
+  if (isRelevant && !isRelevant(payload)) {
     console.log(`ℹ️  ${label} webhook "${eventType}" is not a virtual-account transfer. Ignoring.`);
     if (webhookLog) {
       webhookLog.processed = true;
@@ -120,18 +130,21 @@ const makeWebhookHandler = ({ creditEvents, extract, signatureHeader, label }) =
 };
 
 const handleNombaWebhook = makeWebhookHandler({
-  creditEvents: NOMBA_CREDIT_EVENTS, extract: extractNombaPayment,
-  signatureHeader: 'nomba-signature', label: 'Nomba',
-  isRelevant: (p) => p?.data?.transaction?.type === 'vact_transfer',
+  creditEvents:    NOMBA_CREDIT_EVENTS,
+  extract:         extractNombaPayment,
+  signatureHeader: 'nomba-signature',
+  label:           'Nomba',
+  isRelevant:      (p) => p?.data?.transaction?.type === 'vact_transfer',
 });
 
 const handlePaystackWebhook = makeWebhookHandler({
-  creditEvents: PAYSTACK_CREDIT_EVENTS, extract: extractPaystackPayment,
-  signatureHeader: 'x-paystack-signature', label: 'Paystack',
+  creditEvents:    PAYSTACK_CREDIT_EVENTS,
+  extract:         extractPaystackPayment,
+  signatureHeader: 'x-paystack-signature',
+  label:           'Paystack',
 });
 
-// ─── getWebhookLogs: KEEP YOUR EXISTING FUNCTION UNCHANGED ───────────────────
-// Bursar/Admin can review webhook history for debugging
+// ─── GET /api/webhooks/logs (scoped to the admin's school) ───────────────────
 const getWebhookLogs = async (req, res) => {
   try {
     const page  = parseInt(req.query.page,  10) || 1;
@@ -150,12 +163,7 @@ const getWebhookLogs = async (req, res) => {
 
     return success(res, {
       logs,
-      pagination: {
-        page,
-        limit,
-        totalCount,
-        totalPages: Math.ceil(totalCount / limit),
-      },
+      pagination: { page, limit, totalCount, totalPages: Math.ceil(totalCount / limit) },
     });
   } catch (err) {
     console.error('❌ getWebhookLogs error:', err.message);
@@ -163,10 +171,8 @@ const getWebhookLogs = async (req, res) => {
   }
 };
 
-
-
 // ─── POST /api/webhooks/replay/:id ───────────────────────────────────────────
-// Original reference is reused on purpose: the duplicate check in
+// The original reference is reused on purpose: the duplicate check in
 // processPayment makes replaying an already-credited payment a safe no-op.
 const replayWebhook = async (req, res) => {
   try {
@@ -191,6 +197,5 @@ const replayWebhook = async (req, res) => {
     return error(res, err.message);
   }
 };
-};
 
-module.exports = {  handleNombaWebhook, handlePaystackWebhook, getWebhookLogs, replayWebhook };
+module.exports = { handleNombaWebhook, handlePaystackWebhook, getWebhookLogs, replayWebhook };

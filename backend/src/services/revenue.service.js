@@ -1,37 +1,76 @@
 // src/services/revenue.service.js
-// Task 3: visibility into platform revenue, total school revenues, and
-// each school's revenue broken down by term/session/overall.
 const mongoose = require('mongoose');
-const Payment    = require('../models/Payment');
-const Withdrawal = require('../models/Withdrawal');
+const Payment       = require('../models/Payment');
+const Withdrawal    = require('../models/Withdrawal');
+const FeeAssignment = require('../models/FeeAssignment');
 
-// ── Platform's own revenue (sum of platformFee across ALL schools) ──────────
-const getPlatformRevenue = async ({ from, to } = {}) => {
-  const match = {};
-  if (from || to) match.processedAt = { ...(from && { $gte: new Date(from) }), ...(to && { $lte: new Date(to) }) };
+const oid = (id) => new mongoose.Types.ObjectId(id);
 
+// ── Platform revenue ─────────────────────────────────────────────────────────
+const sumPlatform = async (match = {}) => {
   const [agg] = await Payment.aggregate([
     { $match: match },
-    { $group: { _id: null, totalPlatformFee: { $sum: '$platformFee' }, paymentCount: { $sum: 1 } } },
+    { $group: {
+        _id: null,
+        totalPlatformFee: { $sum: '$platformFee' },
+        totalGatewayFee:  { $sum: '$gatewayFee' },
+        paymentCount:     { $sum: 1 },
+    } },
   ]);
-
-  const withdrawn = await getWithdrawnTotal({ type: 'platform' });
-  const totalPlatformFee = agg?.totalPlatformFee || 0;
-
   return {
-    totalRevenue: totalPlatformFee,
-    paymentCount: agg?.paymentCount || 0,
-    totalWithdrawn: withdrawn,
-    availableToWithdraw: totalPlatformFee - withdrawn,
+    totalPlatformFee: agg?.totalPlatformFee || 0,
+    totalGatewayFee:  agg?.totalGatewayFee  || 0,
+    paymentCount:     agg?.paymentCount     || 0,
   };
 };
 
-// ── One school's revenue, optionally filtered by term/academicSession ──────
-const getSchoolRevenue = async (schoolId, { term, academicSession } = {}) => {
-  const match = { schoolId: new mongoose.Types.ObjectId(schoolId) };
+const getPlatformRevenue = async ({ from, to } = {}) => {
+  const range = {};
+  if (from || to) range.processedAt = { ...(from && { $gte: new Date(from) }), ...(to && { $lte: new Date(to) }) };
+  const hasRange = Object.keys(range).length > 0;
 
+  const period    = await sumPlatform(range);
+  const allTime   = hasRange ? await sumPlatform({}) : period;
+  const withdrawn = await getWithdrawnTotal({ type: 'platform' });
+
+  return {
+    totalRevenue:        period.totalPlatformFee,                          // service charges collected (gross)
+    totalGatewayFee:     period.totalGatewayFee,                           // what Nomba/Paystack took
+    netMargin:           period.totalPlatformFee - period.totalGatewayFee, // your real profit
+    paymentCount:        period.paymentCount,
+    totalWithdrawn:      withdrawn,
+    // Availability is always all-time, regardless of any date filter
+    availableToWithdraw: Math.max(allTime.totalPlatformFee - allTime.totalGatewayFee - withdrawn, 0),
+  };
+};
+
+// ── School revenue helpers ───────────────────────────────────────────────────
+// Only gateway payments sit in the wallet. Manual (cash) payments are the school's own cash.
+const getSchoolGatewayRevenue = async (schoolId) => {
+  const [agg] = await Payment.aggregate([
+    { $match: { schoolId: oid(schoolId), source: { $ne: 'manual' } } },
+    { $group: { _id: null, total: { $sum: '$netAmountForSchool' } } },
+  ]);
+  return agg?.total || 0;
+};
+
+// Overpayments that are owed back, or already refunded, are not the school's to withdraw
+const getHeldOverpayments = async (schoolId) => {
+  const [agg] = await FeeAssignment.aggregate([
+    { $match: {
+        schoolId: oid(schoolId),
+        status: 'overpaid',
+        overpaymentResolution: { $in: ['pending', 'refund_requested', 'refunded'] },
+    } },
+    { $group: { _id: null, total: { $sum: '$overpayment' } } },
+  ]);
+  return agg?.total || 0;
+};
+
+// ── One school's revenue, optionally filtered by term/academicSession ────────
+const getSchoolRevenue = async (schoolId, { term, academicSession } = {}) => {
   const pipeline = [
-    { $match: match },
+    { $match: { schoolId: oid(schoolId) } },
     { $lookup: { from: 'feeassignments', localField: 'feeAssignmentId', foreignField: '_id', as: 'assignment' } },
     { $unwind: '$assignment' },
     { $lookup: { from: 'feestructures', localField: 'assignment.feeStructureId', foreignField: '_id', as: 'structure' } },
@@ -46,58 +85,61 @@ const getSchoolRevenue = async (schoolId, { term, academicSession } = {}) => {
   pipeline.push({
     $group: {
       _id: null,
-      totalRevenue:    { $sum: '$netAmountForSchool' },
-      totalCollected:  { $sum: '$amountPaid' },
-      totalPlatformFee:{ $sum: '$platformFee' },
-      paymentCount:    { $sum: 1 },
+      totalRevenue:     { $sum: '$netAmountForSchool' },
+      manualRevenue:    { $sum: { $cond: [{ $eq: ['$source', 'manual'] }, '$netAmountForSchool', 0] } },
+      totalCollected:   { $sum: '$amountPaid' },
+      totalPlatformFee: { $sum: '$platformFee' },
+      paymentCount:     { $sum: 1 },
     },
   });
 
   const [agg] = await Payment.aggregate(pipeline);
-  const withdrawn = await getWithdrawnTotal({ type: 'school', schoolId });
+  const [withdrawn, gatewayRevenue, held] = await Promise.all([
+    getWithdrawnTotal({ type: 'school', schoolId }),
+    getSchoolGatewayRevenue(schoolId),
+    getHeldOverpayments(schoolId),
+  ]);
 
-  const totalRevenue = agg?.totalRevenue || 0;
   return {
-    totalRevenue,
+    totalRevenue:     agg?.totalRevenue     || 0,   // includes cash recorded by the bursar
+    manualRevenue:    agg?.manualRevenue    || 0,   // cash payments (not in the wallet)
     totalCollected:   agg?.totalCollected   || 0,
     totalPlatformFee: agg?.totalPlatformFee || 0,
     paymentCount:     agg?.paymentCount     || 0,
     totalWithdrawn:   withdrawn,
-    availableToWithdraw: totalRevenue - withdrawn,
+    heldForRefunds:   held,
+    availableToWithdraw: Math.max(gatewayRevenue - withdrawn - held, 0), // all-time, gateway money only
     filters: { term: term || 'all', academicSession: academicSession || 'all' },
   };
 };
 
-// ── Every school's revenue at once, for a platform-level overview ──────────
+// ── Every school's revenue, for the platform overview ────────────────────────
 const getAllSchoolsRevenue = async () => {
-  const results = await Payment.aggregate([
-    {
-      $group: {
+  return Payment.aggregate([
+    { $group: {
         _id: '$schoolId',
         totalRevenue:     { $sum: '$netAmountForSchool' },
         totalCollected:   { $sum: '$amountPaid' },
         totalPlatformFee: { $sum: '$platformFee' },
+        totalGatewayFee:  { $sum: '$gatewayFee' },
         paymentCount:     { $sum: 1 },
-      },
-    },
+    } },
     { $lookup: { from: 'schools', localField: '_id', foreignField: '_id', as: 'school' } },
     { $unwind: '$school' },
-    {
-      $project: {
+    { $project: {
         _id: 0,
-        schoolId:  '$_id',
+        schoolId:   '$_id',
         schoolName: '$school.name',
-        totalRevenue: 1, totalCollected: 1, totalPlatformFee: 1, paymentCount: 1,
-      },
-    },
+        totalRevenue: 1, totalCollected: 1, totalPlatformFee: 1, totalGatewayFee: 1, paymentCount: 1,
+        netMargin: { $subtract: ['$totalPlatformFee', '$totalGatewayFee'] },
+    } },
     { $sort: { totalRevenue: -1 } },
   ]);
-  return results;
 };
 
 const getWithdrawnTotal = async ({ type, schoolId = null }) => {
   const match = { type, status: { $in: ['completed', 'processing'] } };
-  if (schoolId) match.schoolId = new mongoose.Types.ObjectId(schoolId);
+  if (schoolId) match.schoolId = oid(schoolId);
   const [agg] = await Withdrawal.aggregate([{ $match: match }, { $group: { _id: null, total: { $sum: '$amount' } } }]);
   return agg?.total || 0;
 };

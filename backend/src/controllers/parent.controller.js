@@ -3,6 +3,7 @@ const Student       = require('../models/Student');
 const FeeAssignment = require('../models/FeeAssignment');
 const Payment       = require('../models/Payment');
 const User          = require('../models/User');
+const { buildPaymentInstructions } = require('../services/paymentInstructions.service');
 const { paginate }  = require('../utils/paginate');
 const { success, badRequest, notFound, error, forbidden, paginated } = require('../utils/apiResponse');
 
@@ -10,45 +11,91 @@ const assertOwns = async (parentId, studentId) =>
   Student.findOne({ _id: studentId, parentId, isActive: true });
 
 const getDashboard = async (req, res) => {
-  try {
-    const children = await Student.find({ parentId: req.user._id, isActive: true }).select('fullName studentId class gender virtualAccount').lean();
-    if (!children.length) return success(res, { summary: { totalChildren:0, totalOwed:0, totalPaid:0, fullyPaid:0 }, children: [] }, 'No children linked yet.');
-    const studentIds  = children.map(c => c._id);
-    const assignments = await FeeAssignment.find({ studentId: { $in: studentIds } }).populate('feeStructureId','name term academicSession amount dueDate').sort({ createdAt: -1 }).lean();
-    const aMap = {};
-    assignments.forEach(a => { const k = a.studentId.toString(); if (!aMap[k]) aMap[k] = []; aMap[k].push(a); });
-    let totalOwed=0, totalPaid=0, fullyPaid=0;
-    const enriched = children.map(child => {
-      const ca = aMap[child._id.toString()] || [];
-      const la = ca[0] || null;
-      const owed = ca.reduce((s,a) => s+(a.balance||0), 0);
-      const paid = ca.reduce((s,a) => s+(a.totalPaid||0), 0);
-      const paidUp = ca.length > 0 && ca.every(a => a.status === 'paid');
-      totalOwed += owed; totalPaid += paid; if (paidUp) fullyPaid++;
-      return { ...child, hasAccount: !!child.virtualAccount?.accountNumber, accountNumber: child.virtualAccount?.accountNumber||null, bankName: child.virtualAccount?.bankName||null, currentTerm: la ? { name: la.feeStructureId?.name, term: la.feeStructureId?.term, academicSession: la.feeStructureId?.academicSession, amountExpected: la.amountExpected, totalPaid: la.totalPaid, balance: la.balance, overpayment: la.overpayment, status: la.status, dueDate: la.feeStructureId?.dueDate } : null, isPaidUp: paidUp };
-    });
-    return success(res, { summary: { totalChildren: children.length, totalOwed: Math.max(totalOwed,0), totalPaid, fullyPaid, hasOutstanding: totalOwed>0 }, children: enriched });
-  } catch (err) { return error(res); }
-};
+    try {
+      const children = await Student.find({ parentId: req.user._id, isActive: true })
+        .select('fullName studentId class gender schoolId virtualAccounts').lean();
+      if (!children.length) return success(res, { summary: { totalChildren:0, totalOwed:0, totalPaid:0, fullyPaid:0 }, children: [] }, 'No children linked yet.');
 
-const getChildren = async (req, res) => {
-  try {
-    const children = await Student.find({ parentId: req.user._id, isActive: true }).select('fullName studentId class gender virtualAccount createdAt').sort({ fullName: 1 });
-    return success(res, { children, count: children.length });
-  } catch (err) { return error(res); }
-};
+      const studentIds = children.map((c) => c._id);
+      const [assignments, instructionsList] = await Promise.all([
+        FeeAssignment.find({ studentId: { $in: studentIds } })
+          .populate('feeStructureId', 'name term academicSession amount dueDate studentOnly')
+          .sort({ createdAt: -1 }).lean(),
+        Promise.all(children.map((c) => buildPaymentInstructions(c))),
+      ]);
 
-const getChildAccount = async (req, res) => {
-  try {
-    const student = await assertOwns(req.user._id, req.params.studentId);
-    if (!student) return notFound(res, 'Child not found or not linked to your account');
-    if (!student.virtualAccount?.accountNumber) return notFound(res, 'Payment account not yet set up. Contact the school.');
-    const openAssignments = await FeeAssignment.find({ studentId: student._id, status: { $in: ['unpaid','partial'] } }).populate('feeStructureId','name term academicSession dueDate amount').sort({ createdAt: -1 });
-    const totalOutstanding = openAssignments.reduce((s,a) => s+a.balance, 0);
-    return success(res, { paymentDetails: { accountNumber: student.virtualAccount.accountNumber, accountName: student.virtualAccount.accountName, bankName: student.virtualAccount.bankName, instruction: 'Transfer to this account. Payment reconciles automatically.' }, student: { fullName: student.fullName, studentId: student.studentId, class: student.class }, outstandingFees: openAssignments.map(a => ({ name: a.feeStructureId?.name, term: a.feeStructureId?.term, academicSession: a.feeStructureId?.academicSession, amountExpected: a.amountExpected, totalPaid: a.totalPaid, balance: a.balance, dueDate: a.feeStructureId?.dueDate, status: a.status })), totalOutstanding });
-  } catch (err) { return error(res); }
-};
+      const aMap = {};
+      assignments.forEach((a) => { const k = a.studentId.toString(); (aMap[k] = aMap[k] || []).push(a); });
 
+      let totalOwed = 0, totalPaid = 0, fullyPaid = 0;
+      const enriched = children.map((child, i) => {
+        const ca = aMap[child._id.toString()] || [];
+        // "Current term" is the latest real term fee, not a one-off fee like uniform
+        const la = ca.find((a) => !a.feeStructureId?.studentOnly) || ca[0] || null;
+        const owed = ca.reduce((s, a) => s + (a.balance || 0), 0);
+        const paid = ca.reduce((s, a) => s + (a.totalPaid || 0), 0);
+        const paidUp = ca.length > 0 && ca.every((a) => a.status === 'paid');
+        totalOwed += owed; totalPaid += paid; if (paidUp) fullyPaid++;
+
+        const { paymentOptions, outstandingFees } = instructionsList[i];
+        const first = paymentOptions[0];
+        const overpayments = ca
+          .filter((a) => a.status === 'overpaid' && ['pending', 'refund_requested'].includes(a.overpaymentResolution))
+          .map((a) => ({
+            assignmentId: a._id, name: a.feeStructureId?.name, term: a.feeStructureId?.term,
+            amount: a.overpayment, resolution: a.overpaymentResolution,
+          }));
+
+        const { virtualAccounts, ...rest } = child;
+        return {
+          ...rest,
+          hasAccount: paymentOptions.length > 0,
+          accountNumber: first?.accountNumber || null,
+          bankName: first?.bankName || null,
+          paymentOptions, outstandingFees, overpayments,
+          currentTerm: la ? {
+            name: la.feeStructureId?.name, term: la.feeStructureId?.term, academicSession: la.feeStructureId?.academicSession,
+            amountExpected: la.amountExpected, totalPaid: la.totalPaid, balance: la.balance,
+            overpayment: la.overpayment, status: la.status, dueDate: la.feeStructureId?.dueDate,
+          } : null,
+          isPaidUp: paidUp,
+        };
+      });
+
+      return success(res, {
+        summary: { totalChildren: children.length, totalOwed: Math.max(totalOwed, 0), totalPaid, fullyPaid, hasOutstanding: totalOwed > 0 },
+        children: enriched,
+      });
+    } catch (err) { return error(res); }
+  };
+
+  const getChildren = async (req, res) => {
+    try {
+      const children = await Student.find({ parentId: req.user._id, isActive: true })
+        .select('fullName studentId class gender virtualAccounts createdAt').sort({ fullName: 1 });
+      return success(res, { children, count: children.length });
+    } catch (err) { return error(res); }
+  };
+
+  const getChildAccount = async (req, res) => {
+    try {
+      const student = await assertOwns(req.user._id, req.params.studentId);
+      if (!student) return notFound(res, 'Child not found or not linked to your account');
+
+      const instructions = await buildPaymentInstructions(student);
+      if (!instructions.paymentOptions.length) return notFound(res, 'Payment account not yet set up. Contact the school.');
+
+      const first = instructions.paymentOptions[0];
+      return success(res, {
+        paymentDetails: {
+          accountNumber: first.accountNumber, accountName: first.accountName, bankName: first.bankName,
+          instruction: 'Transfer the amount shown to either account. Payment reconciles automatically.',
+        },
+        student: { fullName: student.fullName, studentId: student.studentId, class: student.class },
+        ...instructions,
+      });
+    } catch (err) { return error(res); }
+  };
 const getChildBalance = async (req, res) => {
   try {
     const student = await assertOwns(req.user._id, req.params.studentId);
@@ -83,7 +130,8 @@ const linkChild = async (req, res) => {
     student.parentId = req.user._id;
     await student.save();
     if (!req.user.schoolId) await User.findByIdAndUpdate(req.user._id, { schoolId: student.schoolId });
-    return success(res, { student: { fullName: student.fullName, studentId: student.studentId, class: student.class, accountNumber: student.virtualAccount?.accountNumber||null, bankName: student.virtualAccount?.bankName||null } }, `${student.fullName} successfully linked to your account`);
+    return success(res, { student: { fullName: student.fullName, studentId: student.studentId, class: student.class, accountNumber: student.virtualAccounts?.nomba?.accountNumber || student.virtualAccounts?.paystack?.accountNumber || null,
+bankName:student.virtualAccounts?.nomba?.bankName|| student.virtualAccounts?.paystack?.bankName||null, } }, `${student.fullName} successfully linked to your account`);
   } catch (err) { return error(res); }
 };
 

@@ -2,23 +2,36 @@
 const EARLY_PAYMENT_DISCOUNT_RATE = Number(process.env.EARLY_PAYMENT_DISCOUNT_RATE) || 0.10;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-const checkEarlyPaymentDiscount = (feeAssignment, amountPaid) => {
-  const none = { qualifies: false, discountedThreshold: null, discountAmount: 0 };
+// Single source of truth: is this assignment still inside its early-payment window?
+const getEarlyPaymentOffer = (feeAssignment) => {
   const fs = feeAssignment.feeStructureId;
+  if (!fs || fs.studentOnly || !fs.dueDate) return null;          // one-off fees never qualify
+  if (feeAssignment.totalPaid !== 0) return null;                 // first payment only
+  if (Date.now() > new Date(fs.dueDate).getTime() + DAY_MS - 1) return null; // valid through end of due date
 
-  // One-off fees and fees without a due date never get the discount
-  if (!fs || fs.studentOnly || !fs.dueDate) return none;
-  if (feeAssignment.totalPaid !== 0) return none;
-  if (Date.now() > new Date(fs.dueDate).getTime() + DAY_MS - 1) return none; // valid through end of due date
-
-  const discountedThreshold = Math.round(feeAssignment.amountExpected * (1 - EARLY_PAYMENT_DISCOUNT_RATE));
-
-  // Only a payment between the discounted amount and the full fee qualifies.
-  // Full payment or more needs no discount; normal exact/overpayment handling applies.
-  if (amountPaid < discountedThreshold || amountPaid >= feeAssignment.amountExpected)
-    return { ...none, discountedThreshold };
-
-  return { qualifies: true, discountedThreshold, discountAmount: feeAssignment.amountExpected - amountPaid };
+  const discountedAmount = Math.round(feeAssignment.amountExpected * (1 - EARLY_PAYMENT_DISCOUNT_RATE));
+  return {
+    deadline: fs.dueDate,
+    discountRate: EARLY_PAYMENT_DISCOUNT_RATE,
+    discountedAmount,
+    saving: feeAssignment.amountExpected - discountedAmount,
+  };
 };
 
-module.exports = { checkEarlyPaymentDiscount, EARLY_PAYMENT_DISCOUNT_RATE };
+const checkEarlyPaymentDiscount = (feeAssignment, amountPaid) => {
+  const none = { qualifies: false, discountedThreshold: null, discountAmount: 0 };
+  const offer = getEarlyPaymentOffer(feeAssignment);
+  if (!offer) return none;
+
+  // Only a payment between the discounted amount and the full fee qualifies
+  if (amountPaid < offer.discountedAmount || amountPaid >= feeAssignment.amountExpected)
+    return { ...none, discountedThreshold: offer.discountedAmount };
+
+  return {
+    qualifies: true,
+    discountedThreshold: offer.discountedAmount,
+    discountAmount: feeAssignment.amountExpected - amountPaid,
+  };
+};
+
+module.exports = { checkEarlyPaymentDiscount, getEarlyPaymentOffer, EARLY_PAYMENT_DISCOUNT_RATE };

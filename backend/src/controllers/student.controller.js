@@ -2,10 +2,12 @@
 const Student       = require('../models/Student');
 const FeeAssignment = require('../models/FeeAssignment');
 const FeeStructure = require('../models/FeeStructure');
+const { buildPaymentInstructions } = require('../services/paymentInstructions.service');
 const { provisionStudentVirtualAccount, retryVirtualAccountProvisioning } = require('../services/virtualAccount.service');
 const { paginate }  = require('../utils/paginate');
-const { computeAmountToCollect, isFeeWaived } = require('../services/platformFee.service');
+
 const { success, created, badRequest, notFound, error, forbidden, paginated } = require('../utils/apiResponse');
+
 
 const enrollStudent = async (req, res) => {
   try {
@@ -90,6 +92,8 @@ const getStudent = async (req, res) => {
     if (!student) return notFound(res, 'Student not found');
     if (req.user.role === 'parent' && student.parentId?._id.toString() !== req.user._id.toString())
       return forbidden(res, 'Access denied');
+    if (req.user.role !== 'parent' && student.schoolId?._id?.toString() !== req.user.schoolId?.toString())
+      return forbidden(res, 'Access denied');
     const feeAssignments = await FeeAssignment.find({ studentId: student._id })
       .populate('feeStructureId','name term academicSession amount dueDate').sort({ createdAt: -1 });
     return success(res, { student, feeAssignments });
@@ -140,44 +144,15 @@ const getStudentAccount = async (req, res) => {
       return forbidden(res, 'Access denied');
     }
 
-    const nomba    = student.virtualAccounts?.nomba;
-    const paystack = student.virtualAccounts?.paystack;
-    if (!nomba?.accountNumber && !paystack?.accountNumber)
+    const instructions = await buildPaymentInstructions(student);
+    if (!instructions.paymentOptions.length)
       return notFound(res, 'Virtual account not yet provisioned. Contact the school.');
-
-    const paymentOptions = [];
-    if (nomba?.accountNumber)    paymentOptions.push({ gateway: 'nomba',    ...nomba.toObject() });
-    if (paystack?.accountNumber) paymentOptions.push({ gateway: 'paystack', ...paystack.toObject() });
-
-    const [assignments, waived] = await Promise.all([
-      FeeAssignment.find({ studentId: student._id, status: { $in: ['unpaid', 'partial'] } })
-        .populate('feeStructureId', 'name term academicSession dueDate')
-        .sort({ createdAt: 1 }),
-      isFeeWaived(student.schoolId),
-    ]);
-
-    const outstandingFees = assignments.map((a) => {
-      const amountToPay = {};
-      paymentOptions.forEach(({ gateway }) => {
-        amountToPay[gateway] = computeAmountToCollect(a.balance, gateway, { waived });
-      });
-      return {
-        assignmentId: a._id,
-        name:         a.feeStructureId?.name,
-        term:         a.feeStructureId?.term,
-        dueDate:      a.feeStructureId?.dueDate,
-        balance:      a.balance,
-        amountToPay,  // { nomba: {baseAmount, platformFee, totalAmountToPay}, paystack: {...} }
-      };
-    });
 
     return success(res, {
       studentName: student.fullName,
       studentId:   student.studentId,
       class:       student.class,
-      paymentOptions,
-      outstandingFees,
-      totalOutstanding: outstandingFees.reduce((sum, f) => sum + f.balance, 0),
+      ...instructions,
       instruction: 'Transfer the "amount to pay" shown to either account. Payment reconciles automatically.',
     });
   } catch (err) { return error(res); }

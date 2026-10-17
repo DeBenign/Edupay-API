@@ -3,7 +3,7 @@ const router  = express.Router();
 const {
   createFeeStructure, getFeeStructures, getFeeStructure,
   updateFeeStructure, assignFeeToStudent, assignFeeToClass,
-  getStudentFeeAssignments, adjustFeeAmount,
+  getStudentFeeAssignments, adjustFeeAmount, addFeeToStudent
 } = require('../controllers/fee.controller');
 const { protect }   = require('../middleware/auth.middleware');
 const { authorize } = require('../middleware/role.middleware');

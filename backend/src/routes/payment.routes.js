@@ -6,11 +6,11 @@ const { protect } = require('../middleware/auth.middleware');
 const { authorize } = require('../middleware/role.middleware');
 
 router.use(protect);
-router.post('/manual',               authorize('admin', 'bursar'), createManualPayment);
-router.get('/student/:studentId',       authorize('admin', 'bursar', 'parent'), getStudentPayments);
-router.get('/assignment/:id',           authorize('admin', 'bursar'), getAssignmentSummary);
-router.post('/sync/:studentId',         authorize('admin', 'bursar'), triggerStudentSync);
-router.post('/overpayments/:feeAssignmentId/resolve', protect, resolveOverpayment);
-router.post('/overpayments/:feeAssignmentId/approve-refund', protect, authorize('bursar', 'admin'), approveRefund);
+router.post('/manual', authorize('admin', 'bursar'), createManualPayment);
+router.get('/student/:studentId', authorize('admin', 'bursar', 'parent'), getStudentPayments);
+router.get('/assignment/:id', authorize('admin', 'bursar'), getAssignmentSummary);
+router.post('/sync/:studentId',    authorize('admin', 'bursar'), triggerStudentSync);
+router.post('/overpayments/:feeAssignmentId/resolve', protect, authorize('parent', 'admin', 'bursar'), resolveOverpayment);
+router.post('/overpayments/:feeAssignmentId/approve-refund', protect, authorize('admin', 'bursar'), approveRefund);
 
 module.exports = router;
