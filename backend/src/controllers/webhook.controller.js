@@ -191,5 +191,6 @@ const replayWebhook = async (req, res) => {
     return error(res, err.message);
   }
 };
+};
 
-module.exports = { handleNombaWebhook, handlePaystackWebhook, getWebhookLogs, replayWebhook };
+module.exports = {  handleNombaWebhook, handlePaystackWebhook, getWebhookLogs, replayWebhook };
