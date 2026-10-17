@@ -22,6 +22,7 @@ const paymentSchema = new mongoose.Schema({
 
   // ── Platform fee (task 1) ────────────────────────────────────────────────
   gateway:             { type: String, enum: ['nomba', 'paystack'], required: true },
+  gatewayFee: { type: Number, default: 0 },
   platformFee:         { type: Number, default: 0 }, // what EduPay deducts before crediting school revenue
   platformFeeWaived:   { type: Boolean, default: false }, // true if a referral waiver was active at payment time
   netAmountForSchool:  { type: Number, required: true }, // amountPaid - platformFee — this is what counts as the school's revenue

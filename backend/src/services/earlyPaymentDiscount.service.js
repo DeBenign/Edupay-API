@@ -1,41 +1,24 @@
 // src/services/earlyPaymentDiscount.service.js
-//
-// Task 2iii: 10% discount for a parent who pays the FULL fee before the
-// due date, in one transaction. The school bears this discount, not the
-// platform — this is enforced automatically by construction, because
-// platformFee.service.js always computes its cut on the actual amountPaid,
-// never on the undiscounted amountExpected. The 10% the school "loses" here
-// never touches the platform fee calculation.
-
 const EARLY_PAYMENT_DISCOUNT_RATE = Number(process.env.EARLY_PAYMENT_DISCOUNT_RATE) || 0.10;
+const DAY_MS = 24 * 60 * 60 * 1000;
 
-/**
- * @param feeAssignment  the open FeeAssignment (with feeStructureId populated for dueDate)
- * @param amountPaid     this transaction's amount
- * @returns { qualifies, discountedThreshold, discountAmount }
- */
 const checkEarlyPaymentDiscount = (feeAssignment, amountPaid) => {
-  const dueDate = feeAssignment.feeStructureId?.dueDate;
-  const isFirstPayment = feeAssignment.totalPaid === 0;
-  const beforeDueDate  = dueDate && new Date() <= new Date(dueDate);
+  const none = { qualifies: false, discountedThreshold: null, discountAmount: 0 };
+  const fs = feeAssignment.feeStructureId;
 
-  if (!isFirstPayment || !beforeDueDate) {
-    return { qualifies: false, discountedThreshold: null, discountAmount: 0 };
-  }
+  // One-off fees and fees without a due date never get the discount
+  if (!fs || fs.studentOnly || !fs.dueDate) return none;
+  if (feeAssignment.totalPaid !== 0) return none;
+  if (Date.now() > new Date(fs.dueDate).getTime() + DAY_MS - 1) return none; // valid through end of due date
 
-  // "Full payment" at the discounted rate — e.g. ₦90,000 counts as full
-  // settlement of a ₦100,000 fee if paid whole, before the due date.
   const discountedThreshold = Math.round(feeAssignment.amountExpected * (1 - EARLY_PAYMENT_DISCOUNT_RATE));
 
-  if (amountPaid < discountedThreshold) {
-    return { qualifies: false, discountedThreshold, discountAmount: 0 };
-  }
+  // Only a payment between the discounted amount and the full fee qualifies.
+  // Full payment or more needs no discount; normal exact/overpayment handling applies.
+  if (amountPaid < discountedThreshold || amountPaid >= feeAssignment.amountExpected)
+    return { ...none, discountedThreshold };
 
-  return {
-    qualifies: true,
-    discountedThreshold,
-    discountAmount: feeAssignment.amountExpected - amountPaid, // what the school is forgoing
-  };
+  return { qualifies: true, discountedThreshold, discountAmount: feeAssignment.amountExpected - amountPaid };
 };
 
 module.exports = { checkEarlyPaymentDiscount, EARLY_PAYMENT_DISCOUNT_RATE };

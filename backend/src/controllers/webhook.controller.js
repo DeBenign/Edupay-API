@@ -4,25 +4,23 @@ const { processPayment } = require('../services/reconciliation.service');
 const { success, error } = require('../utils/apiResponse');
 const { findStudentByAccountNumber } = require('../services/virtualAccount.service');
 
-const NOMBA_CREDIT_EVENTS = new Set([
-  'virtualaccount.credit',
-  'transfer.credit',
-  'transaction.successful',
-]);
+const NOMBA_CREDIT_EVENTS = new Set(['payment_success']);
 const PAYSTACK_CREDIT_EVENTS = new Set(['charge.success']);
 
 // ─── Field extraction (one place per gateway, shared by live handlers + replay) ─
 const extractNombaPayment = (payload) => {
-  const data = payload?.data || payload;
+  const tx = payload?.data?.transaction || {};
+  const customer = payload?.data?.customer || {};
   return {
-    accountNumber: data?.destinationAccountNumber || data?.accountNumber || data?.virtualAccountNumber || null,
-    amountPaid:    parseFloat(data?.amount || data?.transactionAmount || 0),
-    reference:     data?.reference || data?.transactionReference || data?.id || null,
-    narration:     data?.narration || data?.description || null,
-    payerName:     data?.sourceAccountName || data?.senderName || null,
-    payerAccount:  data?.sourceAccountNumber || null,
-    payerBank:     data?.sourceBankName || data?.senderBank || null,
-    payerBankCode: data?.sourceBankCode || data?.senderBankCode || null,
+    accountNumber: tx.aliasAccountNumber || null,
+    amountPaid:    Number(tx.transactionAmount) || 0,
+    reference:     tx.transactionId || null,
+    narration:     tx.narration || null,
+    payerName:     customer.senderName || null,
+    payerAccount:  customer.accountNumber || null,
+    payerBank:     customer.bankName || null,
+    payerBankCode: customer.bankCode || null,
+    gatewayFee:    Number(tx.fee) || 0,
   };
 };
 
@@ -104,9 +102,11 @@ const makeWebhookHandler = ({ creditEvents, extract, signatureHeader, label }) =
 
   if (!creditEvents.has(eventType)) {
     console.log(`ℹ️  ${label} webhook event "${eventType}" — not a credit event. Ignoring.`);
+     if (isRelevant && !isRelevant(payload)) {
+    console.log(`ℹ️  ${label} webhook "${eventType}" is not a virtual-account transfer. Ignoring.`);
     if (webhookLog) {
       webhookLog.processed = true;
-      webhookLog.processingError = `Non-credit event: ${eventType}`;
+      webhookLog.processingError = 'Not a virtual-account transfer';
       await webhookLog.save().catch(() => {});
     }
     return;
@@ -121,7 +121,8 @@ const makeWebhookHandler = ({ creditEvents, extract, signatureHeader, label }) =
 
 const handleNombaWebhook = makeWebhookHandler({
   creditEvents: NOMBA_CREDIT_EVENTS, extract: extractNombaPayment,
-  signatureHeader: 'x-nomba-signature', label: 'Nomba',
+  signatureHeader: 'nomba-signature', label: 'Nomba',
+  isRelevant: (p) => p?.data?.transaction?.type === 'vact_transfer',
 });
 
 const handlePaystackWebhook = makeWebhookHandler({

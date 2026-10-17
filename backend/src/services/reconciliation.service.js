@@ -222,7 +222,7 @@ const getReconciliationSummary = async (feeAssignmentId) => {
   const [assignment, payments] = await Promise.all([
     FeeAssignment.findById(feeAssignmentId)
       .populate('studentId', 'fullName studentId class virtualAccounts')
-      .populate('feeStructureId', 'name term academicSession amount dueDate'),
+     .populate('feeStructureId', 'name term academicSession dueDate studentOnly'),
     Payment.find({ feeAssignmentId }).sort({ processedAt: 1 }),
   ]);
   if (!assignment) throw new Error('Fee assignment not found');
