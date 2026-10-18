@@ -21,6 +21,6 @@ router.get('/recent',                       authorize('admin','bursar'), recentP
 // Admin, bursar, AND parent (parent guarded inside controller)
 router.get('/student/:studentId/statement', authorize('admin','bursar','parent'), studentStatement);
 
-router.get('/school-revenue/:schoolId', protect, schoolRevenue);
-router.get('/platform-revenue', protect, requirePlatformAdmin, platformRevenue);
+router.get('/school-revenue/:schoolId', authorize('admin', 'bursar'), schoolRevenue);
+router.get('/platform-revenue', requirePlatformAdmin, platformRevenue);
 module.exports = router;

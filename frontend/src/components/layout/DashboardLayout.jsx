@@ -5,25 +5,25 @@ import { useAuth }   from '../../context/AuthContext'
 import { useSocket } from '../../context/SocketContext'
 import { ENV_NAME }  from '../../api/axios'
 import { LayoutDashboard, Users, GraduationCap, CreditCard,
-         FileText, Bell, Settings, LogOut, Menu, BookOpen, Wallet } from 'lucide-react'
-
+         FileText, Bell, Settings, LogOut, Menu, BookOpen, Wallet, RotateCcw } from 'lucide-react'
 const NAV = {
   admin:  [
-    { to: '/admin',          label: 'Dashboard',      icon: LayoutDashboard },
-    { to: '/admin/students', label: 'Students',       icon: GraduationCap },
-    { to: '/admin/fees',     label: 'Fee Structures', icon: CreditCard },
-    { to: '/admin/staff',    label: 'Staff',          icon: Users },
-    { to: '/admin/settings', label: 'Settings',       icon: Settings },
-  ],
+  { to: '/admin', label: 'Dashboard',      icon: LayoutDashboard },
+  { to: '/admin/students', label: 'Students',  icon: GraduationCap },
+  { to: '/admin/fees',     label: 'Fee Structures', icon: CreditCard },
+  { to: '/admin/overpayments', label: 'Overpayments', icon: RotateCcw },
+  { to: '/admin/staff',    label: 'Staff', icon: Users },
+  { to: '/admin/settings', label: 'Settings', icon: Settings },
+],
   bursar: [
-    { to: '/bursar',               label: 'Dashboard',    icon: LayoutDashboard },
-    { to: '/bursar/reconciliation',label: 'Live Feed',    icon: Wallet },
-    { to: '/bursar/students',      label: 'Students',     icon: GraduationCap },
-    { to: '/bursar/reports',       label: 'Reports',      icon: FileText },
-    { to: '/bursar/overpayments',  label: 'Overpayments', icon: CreditCard },
+    { to: '/bursar', label: 'Dashboard', icon: LayoutDashboard },
+    { to: '/bursar/reconciliation',label: 'Live Feed', icon: Wallet },
+    { to: '/bursar/students', label: 'Students', icon: GraduationCap },
+    { to: '/bursar/reports', label: 'Reports', icon: FileText },
+    { to: '/bursar/overpayments', label: 'Overpayments', icon: CreditCard },
   ],
   parent: [
-    { to: '/parent',          label: 'Dashboard',      icon: LayoutDashboard },
+    { to: '/parent',label: 'Dashboard', icon: LayoutDashboard },
     { to: '/parent/children', label: 'My Children',    icon: BookOpen },
     { to: '/parent/payments', label: 'Payment History',icon: CreditCard },
   ],
@@ -31,7 +31,6 @@ const NAV = {
 
 const ROLE_COLOR = { admin: '#2563eb', bursar: '#059669', parent: '#7c3aed' }
 const ROLE_LABEL = { admin: 'Admin Portal', bursar: 'Bursar Portal', parent: 'Parent Portal' }
-const ROLE_USER  = { admin: 'Adebayo J.', bursar: 'Ngozi B.', parent: 'Mrs. Funke' }
 
 function Sidebar({ role, onClose }) {
   const { user, logout } = useAuth()

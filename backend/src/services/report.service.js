@@ -1,22 +1,13 @@
 // src/services/report.service.js
-// ─────────────────────────────────────────────────────────────────────────────
-// All reporting queries live here. Controllers call these; they never query
-// the DB directly. Keeps controllers thin and reports easily testable.
-// ─────────────────────────────────────────────────────────────────────────────
 
 const FeeAssignment = require('../models/FeeAssignment');
 const Payment       = require('../models/Payment');
 const Student       = require('../models/Student');
 const FeeStructure  = require('../models/FeeStructure');
+const mongoose = require('mongoose');
 
 // ─── 1. School-wide collection summary ───────────────────────────────────────
-/**
- * High-level numbers for the bursar/admin dashboard header cards.
- * Optionally filtered by term and/or academic session.
- *
- * Returns: totalExpected, totalCollected, totalOutstanding, totalOverpaid,
- *          fullyPaid, partialCount, unpaidCount, overpaidCount, totalStudents
- */
+
 const getSchoolSummary = async (schoolId, { term, academicSession } = {}) => {
   // Build fee structure filter for scoping by term/session
   const feeFilter = { schoolId, isActive: true };
@@ -146,24 +137,28 @@ const getClassBreakdown = async (schoolId, { term, academicSession } = {}) => {
  */
 const getOverpaymentsReport = async (schoolId, { page = 1, limit = 20 } = {}) => {
   const skip = (page - 1) * limit;
+  // Only overpayments still needing action. Refunded or credited ones are history.
+  const filter = { schoolId, status: 'overpaid', overpaymentResolution: { $in: ['pending', 'refund_requested'] } };
 
-  const [assignments, totalCount] = await Promise.all([
-    FeeAssignment.find({ schoolId, status: 'overpaid' })
-      .populate('studentId',     'fullName studentId class virtualAccount')
-      .populate('feeStructureId','name term academicSession')
+  const [assignments, totalCount, [sum]] = await Promise.all([
+    FeeAssignment.find(filter)
+      .populate('studentId',      'fullName studentId class virtualAccounts')
+      .populate('feeStructureId', 'name term academicSession')
       .sort({ updatedAt: -1 })
       .skip(skip)
       .limit(limit)
       .lean(),
-    FeeAssignment.countDocuments({ schoolId, status: 'overpaid' }),
+    FeeAssignment.countDocuments(filter),
+    FeeAssignment.aggregate([
+      { $match: { ...filter, schoolId: new mongoose.Types.ObjectId(schoolId) } },
+      { $group: { _id: null, total: { $sum: '$overpayment' } } },
+    ]),
   ]);
-
-  const totalOverpaid = assignments.reduce((sum, a) => sum + a.overpayment, 0);
 
   return {
     assignments,
     totalCount,
-    totalOverpaid,
+    totalOverpaid: sum?.total || 0, // across all pages
     pagination: {
       page, limit, totalCount,
       totalPages:  Math.ceil(totalCount / limit),
@@ -173,10 +168,7 @@ const getOverpaymentsReport = async (schoolId, { page = 1, limit = 20 } = {}) =>
 };
 
 // ─── 4. Per-student statement ─────────────────────────────────────────────────
-/**
- * Full statement for one student — all terms, all payments.
- * Used for generating downloadable student statements.
- */
+
 const getStudentStatement = async (studentId, schoolId) => {
   const student = await Student.findOne({ _id: studentId, schoolId })
     .populate('parentId', 'fullName email phone')
@@ -237,47 +229,11 @@ const getRecentPayments = async (schoolId, limit = 20) => {
   return payments;
 };
 
-async function getSchoolRevenue(schoolId, { term, session } = {}) {
-  const match = { schoolId, reconciliationStatus: { $in: ['exact', 'underpayment', 'overpayment'] } };
-  if (term) match.term = term;
-  if (session) match.academicSession = session;
-
-  const [result] = await Payment.aggregate([
-    { $match: match },
-    { $group: {
-        _id: null,
-        totalCollected: { $sum: '$amountPaid' },
-        platformFees: { $sum: '$platformFee' },
-        netRevenue: { $sum: { $subtract: ['$amountPaid', '$platformFee'] } },
-        transactionCount: { $sum: 1 },
-    }},
-  ]);
-  return result || { totalCollected: 0, platformFees: 0, netRevenue: 0, transactionCount: 0 };
-}
-
-async function getPlatformRevenue({ term, session } = {}) {
-  const match = {};
-  if (term) match.term = term;
-  if (session) match.academicSession = session;
-
-  const [result] = await Payment.aggregate([
-    { $match: match },
-    { $group: {
-        _id: null,
-        totalPlatformFees: { $sum: '$platformFee' },
-        totalVolume: { $sum: '$amountPaid' },
-        transactionCount: { $sum: 1 },
-    }},
-  ]);
-  return result || { totalPlatformFees: 0, totalVolume: 0, transactionCount: 0 };
-}
 
 module.exports = {
   getSchoolSummary,
   getClassBreakdown,
   getOverpaymentsReport,
   getStudentStatement,
-  getRecentPayments,
-  getSchoolRevenue, 
-  getPlatformRevenue 
+  getRecentPayments  
 };
