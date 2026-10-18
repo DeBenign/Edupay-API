@@ -1,13 +1,9 @@
 // src/controllers/report.controller.js
 const {
-  getSchoolSummary,
-  getClassBreakdown,
-  getOverpaymentsReport,
-  getStudentStatement,
-  getRecentPayments, 
-  getSchoolRevenue, 
-  getPlatformRevenue
+  getSchoolSummary, getClassBreakdown, getOverpaymentsReport,
+  getStudentStatement, getRecentPayments,
 } = require('../services/report.service');
+const { getSchoolRevenue, getPlatformRevenue } = require('../services/revenue.service');
 const { success, error, forbidden } = require('../utils/apiResponse');
 
 // ─── GET /api/reports/summary ─────────────────────────────────────────────────
@@ -69,16 +65,14 @@ const overpayments = async (req, res) => {
 // Full payment statement for one student across all terms.
 const studentStatement = async (req, res) => {
   try {
-    const schoolId = req.user.schoolId;
+    let schoolId = req.user.schoolId;
 
-    // Parents can only pull their own child's statement
+    // Parents can only pull their own child's statement, scoped to the child's school
     if (req.user.role === 'parent') {
       const Student = require('../models/Student');
-      const student = await Student.findOne({
-        _id:      req.params.studentId,
-        parentId: req.user._id,
-      });
+      const student = await Student.findOne({ _id: req.params.studentId, parentId: req.user._id }).select('schoolId');
       if (!student) return forbidden(res, 'Access denied');
+      schoolId = student.schoolId;
     }
 
     const result = await getStudentStatement(req.params.studentId, schoolId);
@@ -109,10 +103,9 @@ const recentPayments = async (req, res) => {
 const schoolRevenue = async (req, res) => {
   try {
     const { schoolId } = req.params;
-    if (req.user.role !== 'admin' && req.user.schoolId?.toString() !== schoolId) {
-      return forbidden(res, 'You can only view your own school\'s revenue');
-    }
-    const revenue = await getSchoolRevenue(schoolId, req.query);
+    if (req.user.schoolId?.toString() !== schoolId) return forbidden(res, "You can only view your own school's revenue");
+    const { term, academicSession } = req.query;
+    const revenue = await getSchoolRevenue(schoolId, { term, academicSession });
     return success(res, { revenue });
   } catch (err) { return error(res, err.message); }
 };

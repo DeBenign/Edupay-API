@@ -86,6 +86,11 @@ export default function App() {
               <WithLayout><AdminFeeStructures /></WithLayout>
             </Protected>
           }/>
+          <Route path="/admin/overpayments" element={
+            <Protected roles={['admin']}>
+              <WithLayout><AdminOverpayments /></WithLayout>
+            </Protected>
+          }/>
           <Route path="/admin/staff" element={
             <Protected roles={['admin']}>
               <WithLayout><AdminStaff /></WithLayout>

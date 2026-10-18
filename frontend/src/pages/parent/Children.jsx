@@ -110,27 +110,35 @@ export default function ParentChildren() {
                 </div>
 
                 {/* Account number */}
-                {child.virtualAccount?.accountNumber && (
-                  <div className="px-5 py-3 bg-gray-50 border-b border-gray-100">
-                    <p className="text-xs text-gray-400 mb-1.5 font-semibold uppercase tracking-wide">
-                      Payment Account
-                    </p>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <span className="font-mono font-bold text-gray-900 text-base">
-                          {child.virtualAccount.accountNumber}
-                        </span>
-                        <span className="text-xs text-gray-400 ml-2">
-                          · {child.virtualAccount.bankName}
-                        </span>
-                      </div>
-                      <button onClick={() => copy(child.virtualAccount.accountNumber, child._id)}
-                        className={`btn-ghost text-xs gap-1.5 ${copied === child._id ? 'text-green-600' : 'text-blue-600'}`}>
-                        {copied === child._id ? <><Check size={13} /> Copied</> : <><Copy size={13} /> Copy</>}
-                      </button>
+               {/* Payment accounts */}
+                {(() => {
+                  const options = ['nomba', 'paystack']
+                    .map(gw => ({ gateway: gw, ...(child.virtualAccounts?.[gw] || {}) }))
+                    .filter(o => o.accountNumber)
+                  if (!options.length) return null
+                  return (
+                    <div className="px-5 py-3 bg-gray-50 border-b border-gray-100 space-y-2">
+                      <p className="text-xs text-gray-400 font-semibold uppercase tracking-wide">
+                        Payment {options.length > 1 ? 'Accounts (pay into either)' : 'Account'}
+                      </p>
+                      {options.map(opt => {
+                        const key = `${child._id}-${opt.gateway}`
+                        return (
+                          <div key={key} className="flex items-center justify-between">
+                            <div>
+                              <span className="font-mono font-bold text-gray-900 text-base">{opt.accountNumber}</span>
+                              <span className="text-xs text-gray-400 ml-2">· {opt.bankName}</span>
+                            </div>
+                            <button onClick={() => copy(opt.accountNumber, key)}
+                              className={`btn-ghost text-xs gap-1.5 ${copied === key ? 'text-green-600' : 'text-blue-600'}`}>
+                              {copied === key ? <><Check size={13} /> Copied</> : <><Copy size={13} /> Copy</>}
+                            </button>
+                          </div>
+                        )
+                      })}
                     </div>
-                  </div>
-                )}
+                  )
+                })()}
 
                 {/* Quick links */}
                 <div className="px-5 py-3 flex gap-4">

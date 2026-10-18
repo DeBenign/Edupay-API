@@ -51,6 +51,7 @@ const processPayment = async ({
   payerAccount  = null,
   payerBank     = null,
   payerBankCode = null,
+  gatewayFee    = 0, 
   source        = 'webhook',
   io            = null,
 }) => {
@@ -135,6 +136,7 @@ const processPayment = async ({
     platformFee,
     platformFeeWaived:  waived,
     netAmountForSchool,
+    gatewayFee: source === 'manual' ? 0 : (Number(gatewayFee) || 0),
     earlyPaymentDiscountApplied: discount.qualifies,
     earlyPaymentDiscountAmount:  discount.discountAmount,
   };

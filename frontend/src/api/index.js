@@ -48,6 +48,7 @@ export const paymentAPI = {
   getStudentHistory: (id, params) => api.get(`/payments/student/${id}`, { params }),
   getAssignment:     (id)  => api.get(`/payments/assignment/${id}`),
   syncStudent:       (id)  => api.post(`/payments/sync/${id}`),
+  overpayments: ()  => api.get('/payments/overpayments'),
   resolveOverpayment: (assignmentId, data) => api.post(`/payments/overpayments/${assignmentId}/resolve`, data),
   approveRefund:      (assignmentId, data) => api.post(`/payments/overpayments/${assignmentId}/approve-refund`, data),
 }

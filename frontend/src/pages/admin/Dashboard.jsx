@@ -35,21 +35,6 @@ export default function AdminDashboard() {
   const c = summary?.collection || {}
   const noSchool = !user?.schoolId
 
-  const approveRefund = async (assignmentId, bankCode) => {
-  try {
-    await paymentAPI.approveRefund(assignmentId, bankCode ? { bankCode } : {})
-    toast('Refund sent')
-    load()
-  } catch (err) {
-    const msg = err.response?.data?.message || 'Refund failed'
-    if (msg.includes('bankCode') && !bankCode) {
-      const code = window.prompt("Couldn't detect the payer's bank. Enter the bank code (for example 058):")
-      if (code) return approveRefund(assignmentId, code.trim())
-    }
-    toast(msg, 'error')
-  }
-}
-
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="page-header">

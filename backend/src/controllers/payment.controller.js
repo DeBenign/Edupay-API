@@ -248,4 +248,32 @@ const approveRefund = async (req, res) => {
   } catch (err) { return error(res, err.message); }
 };
 
-module.exports = { createManualPayment, getStudentPayments, getAssignmentSummary, triggerStudentSync, approveRefund, resolveOverpayment };
+// GET /api/payments/overpayments: awaiting a parent decision or a refund approval (staff)
+const listOverpayments = async (req, res) => {
+  try {
+    if (req.user.role === 'parent') return forbidden(res, 'Access denied');
+    const items = await FeeAssignment.find({
+      schoolId: req.user.schoolId,
+      status: 'overpaid',
+      overpayment: { $gt: 0 },
+      overpaymentResolution: { $in: ['pending', 'refund_requested'] },
+    })
+      .populate('studentId', 'fullName studentId class')
+      .populate('feeStructureId', 'name term')
+      .sort({ updatedAt: -1 })
+      .lean();
+
+    return success(res, {
+      overpayments: items.map((a) => ({
+        assignmentId: a._id,
+        student:      a.studentId,
+        fee:          a.feeStructureId?.name,
+        term:         a.feeStructureId?.term,
+        amount:       a.overpayment,
+        resolution:   a.overpaymentResolution,
+      })),
+    });
+  } catch (err) { return error(res); }
+};
+
+module.exports = { createManualPayment, getStudentPayments, getAssignmentSummary, triggerStudentSync, approveRefund, resolveOverpayment, listOverpayments };
