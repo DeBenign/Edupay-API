@@ -16,6 +16,7 @@ import AdminDashboard    from './pages/admin/Dashboard'
 import AdminStudents     from './pages/admin/Students'
 import AdminFeeStructures from './pages/admin/FeeStructures'
 import AdminStaff        from './pages/admin/Staff'
+import AdminOverpayments from './pages/admin/Overpayments'
 import AdminSettings     from './pages/admin/Settings'
 
 // ─── Bursar ───────────────────────────────────────────────────────────────────
