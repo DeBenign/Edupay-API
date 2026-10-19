@@ -19,7 +19,7 @@ if (referralCode) {
   const referrerSchool = await School.findOne({ referralCode: code });
   const referrerUser   = !referrerSchool ? await User.findOne({ referralCode: code }) : null;
 
-  if (referrerSchool || referrerUser) {
+  if ((referrerSchool || referrerUser) && String(referrerUser?._id) !== String(req.user._id)) {
     school.referredBySchoolId = referrerSchool?._id || null;
     school.referredByUserId   = referrerUser?._id || null;
     await school.save();
@@ -59,10 +59,15 @@ const updateSchool = async (req, res) => {
     const school = await School.findById(req.params.id);
     if (!school) return notFound(res, 'School not found');
     if (school.createdBy.toString() !== req.user._id.toString()) return forbidden(res, 'Only the school owner can update school details');
-    if (req.body.paymentGateway !== undefined && ![null, 'nomba', 'paystack'].includes(req.body.paymentGateway)) {
-      return badRequest(res, "paymentGateway must be 'nomba', 'paystack', or null");
+
+    if (req.body.payoutBank !== undefined) {
+      const { accountNumber, bankCode, accountName } = req.body.payoutBank || {};
+      if (!/^\d{10}$/.test(String(accountNumber || '')) || !bankCode || !accountName?.trim())
+        return badRequest(res, 'payoutBank needs a 10-digit accountNumber, a bankCode and an accountName');
+      school.payoutBank = { accountNumber: String(accountNumber), bankCode: String(bankCode), accountName: accountName.trim() };
     }
-    const allowed = ['name','address','email','phone','logoUrl','paymentGateway'];
+
+    const allowed = ['name','address','email','phone','logoUrl'];
     allowed.forEach(f => { if (req.body[f] !== undefined) school[f] = req.body[f]; });
     await school.save();
     return success(res, { school }, 'School updated successfully');

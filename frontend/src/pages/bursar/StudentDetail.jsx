@@ -20,7 +20,7 @@ export default function BursarStudentDetail() {
   const [copied,      setCopied]      = useState(false)
   const [syncing,     setSyncing]     = useState(false)
   const [showManual,  setShowManual]  = useState(false)
-  const [manualForm,  setManualForm]  = useState({ amountPaid: '', reference: '', narration: '' })
+  const [manualForm,  setManualForm]  = useState({ amountPaid: '', reference: '', method: 'Cash', narration: '' })
   const [paying,      setPaying]      = useState(false)
   const [payErr,      setPayErr]      = useState('')
 
@@ -58,7 +58,7 @@ export default function BursarStudentDetail() {
         studentId:  id,
         amountPaid: Number(manualForm.amountPaid),
         reference:  manualForm.reference,
-        narration:  manualForm.narration,
+        narration:  [manualForm.method, manualForm.narration].filter(Boolean).join(' — '),
       })
       toast('Payment recorded successfully!')
       setShowManual(false)
@@ -83,6 +83,13 @@ export default function BursarStudentDetail() {
   const totalOverpaid  = assignments.reduce((s, a) => s + a.overpayment, 0)
   const progressPct    = totalExpected > 0 ? Math.min((totalPaid / totalExpected) * 100, 100) : 0
 
+  const overall = assignments.length === 0 ? 'unpaid'
+    : totalBalance > 0 ? (totalPaid > 0 ? 'partial' : 'unpaid')
+    : totalOverpaid > 0 ? 'overpaid' : 'paid'
+  const accounts = ['nomba', 'paystack']
+    .map(gw => ({ gateway: gw, ...(student.virtualAccounts?.[gw] || {}) }))
+    .filter(a => a.accountNumber)
+    
   const icons  = { exact: '✅', underpayment: '⚠️', overpayment: '🔁' }
   const colors = {
     exact:        'bg-green-50 text-green-700 border-green-100',
@@ -110,7 +117,7 @@ export default function BursarStudentDetail() {
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <h2 className="text-lg font-bold text-gray-900">{student.fullName}</h2>
-                <StatusBadge status={assignments[0]?.status || 'unpaid'} />
+                <StatusBadge status={overall} />
               </div>
               <p className="text-sm text-gray-400 mt-0.5">
                 {student.studentId} · Class {student.class}
@@ -167,24 +174,21 @@ export default function BursarStudentDetail() {
       </div>
 
       {/* Virtual account */}
-      {student.virtualAccount?.accountNumber && (
-        <div className="card p-5">
-          <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-3">
-            Virtual Account (Payment Account)
-          </p>
-          <div className="flex items-center justify-between">
-            <div>
-              <span className="font-mono text-xl font-black text-gray-900">
-                {student.virtualAccount.accountNumber}
-              </span>
-              <span className="text-sm text-gray-400 ml-3">· {student.virtualAccount.bankName}</span>
-              <p className="text-xs text-gray-400 mt-1">{student.virtualAccount.accountName}</p>
+      {accounts.length > 0 && (
+        <div className="card p-5 space-y-4">
+          <p className="text-xs font-bold text-gray-400 uppercase tracking-wide">Virtual Accounts</p>
+          {accounts.map(acc => (
+            <div key={acc.gateway} className="flex items-center justify-between">
+              <div>
+                <span className="font-mono text-xl font-black text-gray-900">{acc.accountNumber}</span>
+                <span className="text-sm text-gray-400 ml-3">· {acc.bankName}</span>
+                <p className="text-xs text-gray-400 mt-1">{acc.accountName}</p>
+              </div>
+              <button onClick={() => copy(acc.accountNumber)} className="btn-secondary text-xs gap-2">
+                {copied ? <><Check size={13} className="text-green-500" /> Copied</> : <><Copy size={13} /> Copy</>}
+              </button>
             </div>
-            <button onClick={() => copy(student.virtualAccount.accountNumber)}
-              className="btn-secondary text-xs gap-2">
-              {copied ? <><Check size={13} className="text-green-500" /> Copied</> : <><Copy size={13} /> Copy</>}
-            </button>
-          </div>
+          ))}
         </div>
       )}
 
@@ -208,7 +212,7 @@ export default function BursarStudentDetail() {
                     <p className="text-sm font-bold text-gray-900">{formatCurrency(a.totalPaid)}</p>
                     <p className="text-xs text-gray-400">of {formatCurrency(a.amountExpected)}</p>
                   </div>
-                  <StatusBadge status={a.status} />
+                  <StatusBadge status={overall} />
                 </div>
               </div>
             ))}
@@ -269,14 +273,19 @@ export default function BursarStudentDetail() {
         {payErr && <div className="mb-4"><Alert type="error" message={payErr} /></div>}
         <form onSubmit={handleManualPayment} className="space-y-4">
           <div className="bg-amber-50 border border-amber-100 rounded-lg p-3 text-xs text-amber-700">
-            ⚠️ Use for cash or cheque payments only. Bank transfers reconcile automatically via webhook.
+            ⚠️ Records money the school received directly (cash, cheque, POS or a transfer to the school's own account). No service charge applies.
           </div>
           <Field label="Amount Paid (₦)" required>
             <input type="number" className="input" placeholder="20000" required min={1}
               value={manualForm.amountPaid}
               onChange={e => setManualForm(p => ({...p, amountPaid: e.target.value}))} />
           </Field>
-          <Field label="Payment Reference" required>
+          <Field label="Payment method">
+            <select className="input" value={manualForm.method} onChange={e => setManualForm(p => ({...p, method: e.target.value}))}>
+              {['Cash', 'Cheque', 'POS', 'Bank transfer to school account'].map(m => <option key={m}>{m}</option>)}
+            </select>
+          </Field>
+          <Field label="Receipt number" required>
             <input className="input" placeholder="e.g. CASH-2024-001" required
               value={manualForm.reference}
               onChange={e => setManualForm(p => ({...p, reference: e.target.value}))} />

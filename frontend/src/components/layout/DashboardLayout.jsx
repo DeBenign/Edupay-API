@@ -14,7 +14,8 @@ const NAV = {
   { to: '/admin/overpayments', label: 'Overpayments', icon: RotateCcw },
   { to: '/admin/staff',    label: 'Staff', icon: Users },
   { to: '/admin/settings', label: 'Settings', icon: Settings },
-  { to: '/admin/referrals', label: 'Referral Rewards', icon: Gift }
+  { to: '/admin/referrals', label: 'Referral Rewards', icon: Gift },
+  { to: '/admin/revenue', label: 'Revenue', icon: Wallet }
 ],
   bursar: [
     { to: '/bursar', label: 'Dashboard', icon: LayoutDashboard },
@@ -22,7 +23,8 @@ const NAV = {
     { to: '/bursar/students', label: 'Students', icon: GraduationCap },
     { to: '/bursar/reports', label: 'Reports', icon: FileText },
     { to: '/bursar/overpayments', label: 'Overpayments', icon: CreditCard },
-    { to: '/bursar/referrals', label: 'Referral Rewards', icon: Gift }
+    { to: '/bursar/referrals', label: 'Referral Rewards', icon: Gift },
+    { to: '/admin/revenue', label: 'Revenue', icon: Wallet }
   ],
   parent: [
     { to: '/parent',label: 'Dashboard', icon: LayoutDashboard },
@@ -138,7 +140,7 @@ export default function DashboardLayout({ children }) {
         </header>
 
         <main className="flex-1 overflow-y-auto p-4 lg:p-6">
-          {children}
+          <SubscriptionBanner /> {children}
         </main>
       </div>
     </div>

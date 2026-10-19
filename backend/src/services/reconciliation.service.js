@@ -42,8 +42,8 @@ const atomicWrite = async (paymentData, assignmentId, assignmentUpdate) => {
 
 // ─── Main reconciliation entry point ─────────────────────────────────────────
 const processPayment = async ({
-  accountNumber = null,
-  studentId = null,
+  accountNumber = null,   // gateway payments identify the student by virtual account
+  studentId     = null,   // manual payments identify the student directly
   amountPaid,
   reference,
   narration     = null,
@@ -51,7 +51,7 @@ const processPayment = async ({
   payerAccount  = null,
   payerBank     = null,
   payerBankCode = null,
-  gatewayFee    = 0, 
+  gatewayFee    = 0,
   source        = 'webhook',
   io            = null,
 }) => {
@@ -62,35 +62,33 @@ const processPayment = async ({
     return { skipped: true, reason: 'duplicate_reference', reference };
   }
 
-  
-
-  // 2. Find student by virtual account (either gateway) and note which one matched
   // 2. Find the student
-let student, gateway;
-if (source === 'manual') {
-  student = studentId ? await Student.findOne({ _id: studentId, isActive: true }) : null;
-  if (!student) return { skipped: true, reason: 'unknown_student', studentId };
-  gateway = 'manual';
-} else {
-  student = await Student.findOne({
-    isActive: true,
-    $or: [
-      { 'virtualAccounts.nomba.accountNumber': accountNumber },
-      { 'virtualAccounts.paystack.accountNumber': accountNumber },
-    ],
-  });
-  if (!student) {
-    console.warn(`⚠️  No student found for account: ${accountNumber}`);
-    return { skipped: true, reason: 'unknown_account', accountNumber };
+  let student, gateway;
+  if (source === 'manual') {
+    student = studentId ? await Student.findOne({ _id: studentId, isActive: true }) : null;
+    if (!student) return { skipped: true, reason: 'unknown_student', studentId };
+    gateway = 'manual';
+  } else {
+    student = await Student.findOne({
+      isActive: true,
+      $or: [
+        { 'virtualAccounts.nomba.accountNumber': accountNumber },
+        { 'virtualAccounts.paystack.accountNumber': accountNumber },
+      ],
+    });
+    if (!student) {
+      console.warn(`⚠️  No student found for account: ${accountNumber}`);
+      return { skipped: true, reason: 'unknown_account', accountNumber };
+    }
+    gateway = student.virtualAccounts?.nomba?.accountNumber === accountNumber ? 'nomba' : 'paystack';
   }
-  gateway = student.virtualAccounts?.nomba?.accountNumber === accountNumber ? 'nomba' : 'paystack';
-}
+
   // 3. Oldest open fee assignment
   const feeAssignment = await FeeAssignment.findOne({
     studentId: student._id,
     status:    { $in: ['unpaid', 'partial'] },
   })
-    .populate('feeStructureId', 'name term academicSession dueDate')
+    .populate('feeStructureId', 'name term academicSession dueDate studentOnly')
     .sort({ createdAt: 1 });
 
   if (!feeAssignment) {
@@ -145,7 +143,7 @@ if (source === 'manual') {
     platformFee,
     platformFeeWaived:  waived,
     netAmountForSchool,
-    gatewayFee: source === 'manual' ? 0 : (Number(gatewayFee) || 0),
+    gatewayFee:         source === 'manual' ? 0 : (Number(gatewayFee) || 0),
     earlyPaymentDiscountApplied: discount.qualifies,
     earlyPaymentDiscountAmount:  discount.discountAmount,
   };
@@ -159,7 +157,7 @@ if (source === 'manual') {
     ...(discount.qualifies && { discountApplied: true, discountAmount: discount.discountAmount }),
   };
 
-  const savedPayment = await Write(paymentData, feeAssignment._id, assignmentUpdate);
+  const savedPayment = await atomicWrite(paymentData, feeAssignment._id, assignmentUpdate);
 
   // 6. Result
   const result = {
@@ -213,28 +211,16 @@ if (source === 'manual') {
   return result;
 };
 
-// ─── Manual payment (bursar override) ────────────────────────────────────────
+// ─── Manual payment (bursar records cash, cheque, POS or a transfer to the school) ───
 const processManualPayment = ({ studentId, amountPaid, reference, narration = 'Manual payment entry', io = null }) =>
-  processPayment({ studentId, amountPaid, reference, narration, source: 'manual', io });  
-
-const student = await Student.findById(studentId);
-  if (!student) throw new Error('Student not found');
-
-  const resolvedGateway = gateway
-    || (student.virtualAccounts?.nomba?.accountNumber && 'nomba')
-    || (student.virtualAccounts?.paystack?.accountNumber && 'paystack');
-
-  if (!resolvedGateway) throw new Error('Student has no virtual account on either gateway');
-
-  const accountNumber = student.virtualAccounts[resolvedGateway].accountNumber;
-  return processPayment({ accountNumber, amountPaid, reference, narration, source: 'manual', io });
+  processPayment({ studentId, amountPaid, reference, narration, source: 'manual', io });
 
 // ─── Reconciliation summary for one assignment ────────────────────────────────
 const getReconciliationSummary = async (feeAssignmentId) => {
   const [assignment, payments] = await Promise.all([
     FeeAssignment.findById(feeAssignmentId)
       .populate('studentId', 'fullName studentId class virtualAccounts')
-     .populate('feeStructureId', 'name term academicSession dueDate studentOnly'),
+      .populate('feeStructureId', 'name term academicSession amount dueDate studentOnly'),
     Payment.find({ feeAssignmentId }).sort({ processedAt: 1 }),
   ]);
   if (!assignment) throw new Error('Fee assignment not found');

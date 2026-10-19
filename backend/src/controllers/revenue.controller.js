@@ -24,8 +24,8 @@ const allSchoolsRevenue = async (req, res) => {
 const oneSchoolRevenue = async (req, res) => {
   try {
     const { schoolId } = req.params;
-    const isOwnSchool = req.user.schoolId?.toString() === schoolId;
-    if (!isOwnSchool && !req.platformAdmin) {
+    const isStaffOfSchool = ['admin', 'bursar'].includes(req.user.role) && req.user.schoolId?.toString() === schoolId;
+    if (!isStaffOfSchool && !req.platformAdmin) {
       return forbidden(res, 'You can only view your own school\'s revenue');
     }
     const { term, academicSession } = req.query;

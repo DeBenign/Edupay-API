@@ -145,15 +145,14 @@ const getStudentAccount = async (req, res) => {
     }
 
     const instructions = await buildPaymentInstructions(student);
-    if (!instructions.paymentOptions.length)
-      return notFound(res, 'Virtual account not yet provisioned. Contact the school.');
-
     return success(res, {
       studentName: student.fullName,
       studentId:   student.studentId,
       class:       student.class,
       ...instructions,
-      instruction: 'Transfer the "amount to pay" shown to either account. Payment reconciles automatically.',
+      instruction: instructions.paymentOptions.length
+        ? 'Transfer the "amount to pay" shown to either account. Payment reconciles automatically.'
+        : 'No online account yet. Pay at the school bursary; your balance updates when the bursar records it.',
     });
   } catch (err) { return error(res); }
 };

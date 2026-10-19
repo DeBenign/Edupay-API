@@ -40,6 +40,7 @@ export const feeAPI = {
   assignToClass:         (data)   => api.post('/fees/assign-class', data),
   getStudentAssignments: (id)     => api.get(`/fees/assignments/${id}`),
   addToStudent: (data) => api.post('/fees/assign-custom', data),
+  adjustAssignment: (id, data) => api.patch(`/fees/assignments/${id}/adjust`, data),
 }
 
 // ─── Payments ─────────────────────────────────────────────────────────────────
@@ -107,4 +108,11 @@ export const referralAPI = {
   myRewards:    ()               => api.get('/referrals/rewards'),
   claimReward:  (rewardId, data) => api.post(`/referrals/rewards/${rewardId}/claim`, data),
   dataPlans: (params) => api.get('/referrals/data-plans', { params }),
+}
+
+// ─── Subscription ────────────────────────────────────────────────────────────────
+export const subscriptionAPI = {
+  mine:    ()               => api.get('/subscriptions/mine'),
+  schools: ()               => api.get('/subscriptions/schools'),
+  record:  (schoolId, data) => api.post(`/subscriptions/schools/${schoolId}/payments`, data),
 }

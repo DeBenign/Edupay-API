@@ -3,6 +3,9 @@ import { useEffect, useState } from 'react'
 import { referralAPI } from '../../api'
 import { Alert, Spinner } from '../../components/ui'
 import { formatCurrency } from '../../utils/formatters'
+import useAuth from '../../context/AuthContext'
+
+const { user } = useAuth()
 
 const NETWORKS = ['mtn', 'glo', 'airtel', '9mobile']
 
@@ -119,6 +122,15 @@ export default function ReferralClaim() {
         </p>
       </div>
 
+      {user?.referralCode && (
+        <div className="card p-4 flex items-center justify-between">
+          <div>
+            <p className="text-xs text-gray-500">Your referral code</p>
+            <p className="font-mono font-bold text-lg">{user.referralCode}</p>
+          </div>
+          <button className="btn-secondary text-xs" onClick={() => navigator.clipboard.writeText(user.referralCode)}>Copy</button>
+        </div>
+      )}
       {notice && <Alert type={notice.type} message={notice.text} onClose={() => setNotice(null)} />}
 
       {claimable.length === 0 && <p className="text-sm text-gray-500">No rewards to claim right now.</p>}

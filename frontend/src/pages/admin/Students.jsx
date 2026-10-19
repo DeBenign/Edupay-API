@@ -37,6 +37,33 @@ const [feeForm,   setFeeForm]   = useState(INITIAL_FEE)
 const [savingFee, setSavingFee] = useState(false)
 const [feeErr,    setFeeErr]    = useState('')
 
+const [adjusting,  setAdjusting]  = useState(null)
+const [adjForm,    setAdjForm]    = useState({ newAmount: '', reason: '' })
+const [adjSaving,  setAdjSaving]  = useState(false)
+const [adjErr,     setAdjErr]     = useState('')
+
+const openAdjust = (fee) => {
+  setAdjusting({ fee, student: accountModal })
+  setAdjForm({ newAmount: String(fee.amountExpected ?? ''), reason: '' })
+  setAdjErr('')
+}
+
+const submitAdjust = async (e) => {
+  e.preventDefault(); setAdjSaving(true); setAdjErr('')
+  try {
+    await feeAPI.adjustAssignment(adjusting.fee.assignmentId, {
+      newAmountExpected: Number(adjForm.newAmount), reason: adjForm.reason,
+    })
+    toast('Fee adjusted')
+    const s = adjusting.student
+    setAdjusting(null)
+    await showAccount({ _id: s._id, fullName: s.studentName, studentId: s.studentId })
+    load()
+  } catch (err) {
+    setAdjErr(err.response?.data?.message || 'Could not adjust fee')
+  } finally { setAdjSaving(false) }
+}
+
 const closePromote = () => { setPromoteOpen(false); setPromotePreview(null); setPromoteErr(''); setPromoteForm(INITIAL_PROMOTE) }
 
 const setP = (k) => (e) => {
@@ -108,7 +135,7 @@ const submitFee = async (e) => {
   const showAccount = async (student) => {
     try {
       const res = await studentAPI.getAccount(student._id)
-      setAccountModal({ ...res.data.data, studentName: student.fullName, studentId: student.studentId })
+      setAccountModal({ ...res.data.data, studentName: student.fullName, studentId: student.studentId, _id: student._id })
     } catch {
       toast('Could not load account details', 'error')
     }
@@ -298,13 +325,17 @@ const retryProvision = async (studentId) => {
               </div>
             ))}
 
+          {accountModal.paymentOptions?.length === 0 && (
+            <p className="text-sm text-gray-500">No online account yet. Payments are recorded manually by the bursar.</p>
+          )}
+
            {accountModal.outstandingFees?.length > 0 && (
               <div className="bg-amber-50 border border-amber-100 rounded-lg p-3 space-y-3">
                 <p className="text-xs font-semibold text-amber-700">Outstanding Fees</p>
                 {accountModal.outstandingFees.map((fee) => (
                   <div key={fee.assignmentId} className="text-xs text-amber-700 space-y-1">
                     <div className="flex justify-between">
-                      <span>{fee.name}</span>
+                      <span>{fee.name} <button type="button" onClick={() => openAdjust(fee)} className="ml-2 text-blue-600 hover:underline">Adjust</button></span>
                       <span className="font-bold">{formatCurrency(fee.balance)}</span>
                     </div>
                     {Object.entries(fee.amountToPay || {}).map(([gw, p]) => (
@@ -392,6 +423,29 @@ const retryProvision = async (studentId) => {
             )}
           </div>
         </div>
+      </Modal>
+
+      {/* Hardship Adjusting Modal */}
+      <Modal open={!!adjusting} onClose={() => setAdjusting(null)} title={`Adjust fee: ${adjusting?.student?.studentName || ''}`} size="sm">
+        {adjErr && <div className="mb-4"><Alert type="error" message={adjErr} /></div>}
+        <form onSubmit={submitAdjust} className="space-y-4">
+          <div className="bg-amber-50 border border-amber-100 rounded-lg p-3 text-xs text-amber-700">
+            Changing a fee for one student is recorded with your name and the reason below.
+            {adjusting?.fee?.totalPaid > 0 && ` ₦${adjusting.fee.totalPaid.toLocaleString()} has already been paid.`}
+          </div>
+          <Field label="New amount (₦)" required>
+            <input type="number" min={1} className="input" required value={adjForm.newAmount}
+              onChange={e => setAdjForm(p => ({ ...p, newAmount: e.target.value }))} />
+          </Field>
+          <Field label="Reason" required>
+            <input className="input" placeholder="e.g. Approved hardship, parent applied on 12 Sept" required
+              value={adjForm.reason} onChange={e => setAdjForm(p => ({ ...p, reason: e.target.value }))} />
+          </Field>
+          <div className="flex gap-3 justify-end">
+            <button type="button" className="btn-secondary" onClick={() => setAdjusting(null)}>Cancel</button>
+            <button type="submit" className="btn-primary" disabled={adjSaving}>{adjSaving ? <Spinner size="sm" /> : 'Save'}</button>
+          </div>
+        </form>
       </Modal>
 
       {/* Add Fee Modal */}

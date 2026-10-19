@@ -217,7 +217,7 @@ export default function ParentDashboard() {
                 <p className="text-amber-700">Pay at the school bursary. Your balance updates here when the bursar records your payment.</p>
               </div>
             )}
-            {child.outstandingFees?.length > 0 && child.paymentOptions?.length > 0 (
+            {child.outstandingFees?.length > 0 && child.paymentOptions?.length > 0 && (
               <div className="px-5 py-3 bg-amber-50 border-t border-amber-100 space-y-2 text-xs text-amber-800">
                 <p className="font-semibold">Amount to transfer</p>
                 {child.outstandingFees.map(fee => (

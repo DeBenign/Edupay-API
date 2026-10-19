@@ -7,6 +7,7 @@ import { SocketProvider }          from './context/SocketContext'
 import { PageLoader }              from './components/ui'
 import DashboardLayout             from './components/layout/DashboardLayout'
 import ReferralClaim from './pages/admin/ReferralClaim'
+import Revenue from './pages/admin/Revenue'
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 import Login    from './pages/auth/Login'
@@ -103,10 +104,17 @@ export default function App() {
               <WithLayout><AdminSettings /></WithLayout>
             </Protected>
           }/>
+          <Route path="/admin/subscriptions" element={<Protected roles={['admin']}><WithLayout><Subscriptions /></WithLayout></Protected>} />
 
           {['admin', 'bursar', 'parent'].map(role => (
           <Route key={role} path={`/${role}/referrals`} element={
             <Protected roles={[role]}><WithLayout><ReferralClaim /></WithLayout></Protected>
+          } />
+        ))}
+
+        {['admin', 'bursar'].map(role => (
+          <Route key={role} path={`/${role}/revenue`} element={
+            <Protected roles={[role]}><WithLayout><Revenue /></WithLayout></Protected>
           } />
         ))}
 

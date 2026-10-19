@@ -78,24 +78,23 @@ const getDashboard = async (req, res) => {
   };
 
   const getChildAccount = async (req, res) => {
-    try {
-      const student = await assertOwns(req.user._id, req.params.studentId);
-      if (!student) return notFound(res, 'Child not found or not linked to your account');
+  try {
+    const student = await assertOwns(req.user._id, req.params.studentId);
+    if (!student) return notFound(res, 'Child not found or not linked to your account');
 
-      const instructions = await buildPaymentInstructions(student);
-      if (!instructions.paymentOptions.length) return notFound(res, 'Payment account not yet set up. Contact the school.');
+    const instructions = await buildPaymentInstructions(student);
+    const first = instructions.paymentOptions[0];
+    return success(res, {
+      paymentDetails: first ? {
+        accountNumber: first.accountNumber, accountName: first.accountName, bankName: first.bankName,
+        instruction: 'Transfer the amount shown to either account. Payment reconciles automatically.',
+      } : null,
+      student: { fullName: student.fullName, studentId: student.studentId, class: student.class },
+      ...instructions,
+    });
+  } catch (err) { return error(res); }
+};
 
-      const first = instructions.paymentOptions[0];
-      return success(res, {
-        paymentDetails: {
-          accountNumber: first.accountNumber, accountName: first.accountName, bankName: first.bankName,
-          instruction: 'Transfer the amount shown to either account. Payment reconciles automatically.',
-        },
-        student: { fullName: student.fullName, studentId: student.studentId, class: student.class },
-        ...instructions,
-      });
-    } catch (err) { return error(res); }
-  };
 const getChildBalance = async (req, res) => {
   try {
     const student = await assertOwns(req.user._id, req.params.studentId);

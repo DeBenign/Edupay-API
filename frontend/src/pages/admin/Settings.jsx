@@ -1,34 +1,35 @@
 // src/pages/admin/Settings.jsx
 import { useState, useEffect } from 'react'
-import { schoolAPI, authAPI } from '../../api'
+import { schoolAPI, authAPI, subscriptionAPI } from '../../api'
 import { useAuth } from '../../context/AuthContext'
-import { Alert, Spinner, Field } from '../../components/ui'
-import { Toast } from '../../components/ui'
+import { Alert, Spinner, Field, Toast } from '../../components/ui'
 import { useToast } from '../../hooks/useToast'
-import { Building2, Lock, CreditCard } from 'lucide-react'
+import { formatCurrency, formatDate } from '../../utils/formatters'
+import { Building2, Lock, Gift } from 'lucide-react'
 import { ENV_NAME, BASE_URL } from '../../api/axios'
 
 export default function AdminSettings() {
   const { user, updateUser } = useAuth()
   const { toasts, toast, remove } = useToast()
-  const [school,  setSchool]  = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [saving,  setSaving]  = useState(false)
-  const [err,     setErr]     = useState('')
-  const [form,    setForm]    = useState({ name: '', address: '', email: '', phone: '' })
-  const [gateway, setGateway] = useState('nomba')
-  const [gwSaving,setGwSaving]= useState(false)
-  const [pwForm,  setPwForm]  = useState({ currentPassword: '', newPassword: '', confirmPassword: '' })
-  const [pwErr,   setPwErr]   = useState('')
-  const [pwSaving,setPwSaving]= useState(false)
+  const [school,   setSchool]   = useState(null)
+  const [sub,      setSub]      = useState(null)
+  const [loading,  setLoading]  = useState(true)
+  const [saving,   setSaving]   = useState(false)
+  const [err,      setErr]      = useState('')
+  const [form,     setForm]     = useState({ name: '', address: '', email: '', phone: '', referralCode: '' })
+  const [pwForm,   setPwForm]   = useState({ currentPassword: '', newPassword: '', confirmPassword: '' })
+  const [pwErr,    setPwErr]    = useState('')
+  const [pwSaving, setPwSaving] = useState(false)
+
+  const loadSub = () => subscriptionAPI.mine().then(r => setSub(r.data.data.subscription)).catch(() => {})
 
   useEffect(() => {
     schoolAPI.getmine()
       .then(res => {
         const s = res.data.data.school
         setSchool(s)
-        setForm({ name: s.name, address: s.address, email: s.email, phone: s.phone || '' })
-        setGateway(s.paymentGateway || 'nomba')
+        setForm({ name: s.name, address: s.address, email: s.email, phone: s.phone || '', referralCode: '' })
+        loadSub()
       })
       .catch(() => {})
       .finally(() => setLoading(false))
@@ -36,35 +37,21 @@ export default function AdminSettings() {
 
   const handleSchoolSave = async (e) => {
     e.preventDefault(); setSaving(true); setErr('')
+    const { referralCode, ...profile } = form
     try {
       if (school) {
-        await schoolAPI.update(school._id, form)
+        await schoolAPI.update(school._id, profile)
         toast('School profile updated!')
       } else {
-        const res = await schoolAPI.create(form)
+        const res = await schoolAPI.create({ ...profile, ...(referralCode.trim() && { referralCode: referralCode.trim() }) })
         setSchool(res.data.data.school)
         updateUser({ schoolId: res.data.data.school._id })
+        loadSub()
         toast('School created successfully!')
       }
     } catch (er) {
       setErr(er.response?.data?.message || 'Failed to save school')
     } finally { setSaving(false) }
-  }
-
-  const handleGatewaySave = async (nextGateway) => {
-    if (!school || nextGateway === gateway) return
-    const previous = gateway
-    setGateway(nextGateway) // optimistic
-    setGwSaving(true)
-    try {
-      await schoolAPI.update(school._id, { paymentGateway: nextGateway })
-      toast(`New students will now provision on ${nextGateway === 'paystack' ? 'Paystack' : 'Nomba'}`)
-    } catch (er) {
-      setGateway(previous) // revert on failure
-      toast(er.response?.data?.message || 'Failed to update payment gateway', 'error')
-    } finally {
-      setGwSaving(false)
-    }
   }
 
   const handlePwChange = async (e) => {
@@ -80,7 +67,8 @@ export default function AdminSettings() {
     } finally { setPwSaving(false) }
   }
 
-  const set  = (k) => (e) => setForm(p => ({ ...p, [k]: e.target.value }))
+  const copy = (text) => { navigator.clipboard.writeText(text); toast('Copied') }
+  const set   = (k) => (e) => setForm(p => ({ ...p, [k]: e.target.value }))
   const setPw = (k) => (e) => setPwForm(p => ({ ...p, [k]: e.target.value }))
 
   if (loading) return <div className="flex justify-center py-24"><Spinner size="lg" /></div>
@@ -94,7 +82,6 @@ export default function AdminSettings() {
         <p className="page-sub">Manage your school profile and account</p>
       </div>
 
-      {/* Server indicator */}
       <div className={`flex items-center gap-2 text-xs font-semibold px-3 py-2 rounded-lg border w-fit
         ${ENV_NAME === 'LIVE' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-blue-50 text-blue-700 border-blue-200'}`}>
         <span className={`w-2 h-2 rounded-full ${ENV_NAME === 'LIVE' ? 'bg-green-500' : 'bg-blue-500'}`} />
@@ -127,6 +114,12 @@ export default function AdminSettings() {
           <Field label="Phone">
             <input className="input" placeholder="09011223344" value={form.phone} onChange={set('phone')} />
           </Field>
+          {!school && (
+            <Field label="Referral code (optional)">
+              <input className="input" placeholder="Code from the person or school that referred you"
+                value={form.referralCode} onChange={set('referralCode')} />
+            </Field>
+          )}
           <div className="flex justify-end">
             <button type="submit" className="btn-primary" disabled={saving}>
               {saving ? <Spinner size="sm" /> : school ? 'Save Changes' : 'Create School'}
@@ -135,39 +128,43 @@ export default function AdminSettings() {
         </form>
       </div>
 
-      {/* Payment gateway */}
+      {/* Referral codes */}
       {school && (
-        <div className="card p-6">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-9 h-9 bg-emerald-50 rounded-lg flex items-center justify-center">
-              <CreditCard size={18} className="text-emerald-600" />
+        <div className="card p-6 space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 bg-purple-50 rounded-lg flex items-center justify-center">
+              <Gift size={18} className="text-purple-600" />
             </div>
-            <h2 className="font-semibold text-gray-900">Payment Gateway</h2>
+            <h2 className="font-semibold text-gray-900">Referral codes</h2>
           </div>
-          <p className="text-sm text-gray-500 mb-5">
-            Which gateway new students are provisioned on. Existing students keep the account they already have.
+          <p className="text-sm text-gray-500">
+            Share a code with another school. When that school signs up with it and pays through EduPay, you are rewarded.
           </p>
+          {[
+            school.referralCode && { label: 'School code (earns 30 days of waived service charges)', code: school.referralCode },
+            user?.referralCode  && { label: 'Your personal code (earns an airtime or data reward)', code: user.referralCode },
+          ].filter(Boolean).map(({ label, code }) => (
+            <div key={code} className="flex items-center justify-between bg-gray-50 rounded-lg px-4 py-3">
+              <div>
+                <p className="text-xs text-gray-500">{label}</p>
+                <p className="font-mono font-bold text-gray-900">{code}</p>
+              </div>
+              <button className="btn-secondary text-xs" onClick={() => copy(code)}>Copy</button>
+            </div>
+          ))}
+        </div>
+      )}
 
-          <div className="grid grid-cols-2 gap-3">
-            {[
-              { value: 'nomba',    label: 'Nomba' },
-              { value: 'paystack', label: 'Paystack' },
-            ].map(opt => (
-              <button
-                key={opt.value}
-                type="button"
-                disabled={gwSaving}
-                onClick={() => handleGatewaySave(opt.value)}
-                className={`flex items-center justify-between px-4 py-3 rounded-lg border text-sm font-medium transition
-                  ${gateway === opt.value
-                    ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
-                    : 'border-gray-200 text-gray-600 hover:border-gray-300'}`}
-              >
-                {opt.label}
-                {gateway === opt.value && <span className="text-xs font-semibold">Active</span>}
-              </button>
-            ))}
-          </div>
+      {/* Subscription */}
+      {sub && (
+        <div className="card p-6">
+          <h2 className="font-semibold text-gray-900 mb-2">Subscription</h2>
+          <p className="text-sm text-gray-600">
+            {sub.status === 'pilot'  && `Free pilot until ${formatDate(sub.activeUntil)}.`}
+            {sub.status === 'active' && `Paid until ${formatDate(sub.activeUntil)}.`}
+            {sub.status === 'due'    && 'Your subscription is overdue.'}
+          </p>
+          <p className="text-xs text-gray-400 mt-1">{formatCurrency(sub.pricePerTerm)} per term. Contact EduPay to pay.</p>
         </div>
       )}
 

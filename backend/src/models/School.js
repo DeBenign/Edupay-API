@@ -25,6 +25,10 @@ const schoolSchema = new mongoose.Schema({
   // ── Platform fee waiver (referral reward — applied manually by an admin) ─
   platformFeeWaivedUntil: { type: Date, default: null },
 
+  subscription: {
+    pilotEndsAt: { type: Date, default: () => new Date(Date.now() + 120 * 24 * 60 * 60 * 1000) },
+    paidUntil:   { type: Date, default: null },
+  },
   // ── Payout destination for this school's revenue withdrawals ────────────
   payoutBank: {
     accountNumber: { type: String, default: null },

@@ -143,5 +143,15 @@ const getWithdrawnTotal = async ({ type, schoolId = null }) => {
   const [agg] = await Withdrawal.aggregate([{ $match: match }, { $group: { _id: null, total: { $sum: '$amount' } } }]);
   return agg?.total || 0;
 };
-
-module.exports = { getPlatformRevenue, getSchoolRevenue, getAllSchoolsRevenue, getWithdrawnTotal };
+// Raw numbers for the overdraw check (never clipped at zero)
+const getWithdrawableTotals = async ({ type, schoolId = null }) => {
+  if (type === 'school') {
+    const [gateway, held, withdrawn] = await Promise.all([
+      getSchoolGatewayRevenue(schoolId), getHeldOverpayments(schoolId), getWithdrawnTotal({ type: 'school', schoolId }),
+    ]);
+    return { earned: gateway - held, withdrawn };
+  }
+  const [p, withdrawn] = await Promise.all([sumPlatform({}), getWithdrawnTotal({ type: 'platform' })]);
+  return { earned: p.totalPlatformFee - p.totalGatewayFee, withdrawn };
+};
+module.exports = { getPlatformRevenue, getSchoolRevenue, getAllSchoolsRevenue, getWithdrawnTotal, getWithdrawableTotals };

@@ -1,5 +1,5 @@
 // src/models/User.js
-const crypto = require('crypto');
+const crypto   = require('crypto');
 const mongoose = require('mongoose');
 const bcrypt   = require('bcryptjs');
 
@@ -12,21 +12,18 @@ const userSchema = new mongoose.Schema({
   phone:       { type: String, trim: true },
   isActive:    { type: Boolean, default: true },
   lastLoginAt: { type: Date, default: null },
- // Personal referral code — any admin/bursar/parent can share this to refer
-// a NEW school. The referring user automatically becomes eligible for a
-// ₦2,000 airtime reward once the referred school makes its first payment
-// (see referral.service.js's checkReferralConversion) — claimed self-serve
-// by the user from their own dashboard, not sent by an admin.
-referralCode: { type: String, unique: true, sparse: true, uppercase: true },
+  // Personal code, shared to refer a NEW school. The reward is claimed from the user's own dashboard.
+  referralCode: { type: String, unique: true, sparse: true, uppercase: true },
 }, { timestamps: true });
 
-// User.js: the usual shape
-userSchema.pre('save', async function () {
-  if (!this.isModified('password')) return;
-  this.password = await bcrypt.hash(this.password, 12);
+userSchema.pre('validate', function () {
+  if (!this.referralCode) {
+    const prefix = (this.fullName || 'USER').replace(/[^A-Za-z]/g, '').slice(0, 4).toUpperCase() || 'USER';
+    this.referralCode = `${prefix}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
+  }
 });
 
-// Hash password — async hook, NO next() parameter in Mongoose 7+
+// Hash the password once (async hook, no next())
 userSchema.pre('save', async function () {
   if (!this.isModified('password')) return;
   this.password = await bcrypt.hash(this.password, 12);
