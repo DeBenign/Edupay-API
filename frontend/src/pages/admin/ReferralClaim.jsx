@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { referralAPI } from '../../api'
 import { Alert, Spinner } from '../../components/ui'
 import { formatCurrency } from '../../utils/formatters'
-import useAuth from '../../context/AuthContext'
+import { useAuth } from '../../context/AuthContext'
 
 const { user } = useAuth()
 

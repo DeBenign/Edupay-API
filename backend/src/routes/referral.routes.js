@@ -6,7 +6,8 @@ const {
   listReferrals,
   rewardFeeWaiver,
   getMyRewards,
-  claimReward,
+  claimReward, 
+  getDataPlans
 } = require('../controllers/referral.controller');
 
 // Self-serve, own-reward-only — must stay OUTSIDE the requirePlatformAdmin gate
