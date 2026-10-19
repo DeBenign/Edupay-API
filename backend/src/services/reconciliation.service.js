@@ -19,31 +19,31 @@ const resolveStatus = (amountExpected, totalPaid) => {
 
 // ─── Atomic write with session fallback ──────────────────────────────────────
 const atomicWrite = async (paymentData, assignmentId, assignmentUpdate) => {
+  let savedPayment;
   try {
     const session = await mongoose.startSession();
-    let savedPayment;
-    await session.withTransaction(async () => {
-      [savedPayment] = await Payment.create([paymentData], { session });
-      await FeeAssignment.findByIdAndUpdate(assignmentId, { $set: assignmentUpdate }, { session });
-      await checkReferralConversion(paymentData.schoolId, session);
-    });
-    await session.endSession();
-    return savedPayment;
+    try {
+      await session.withTransaction(async () => {
+        [savedPayment] = await Payment.create([paymentData], { session });
+        await FeeAssignment.findByIdAndUpdate(assignmentId, { $set: assignmentUpdate }, { session });
+      });
+    } finally { await session.endSession(); }
   } catch (sessionErr) {
-    if (sessionErr.message?.includes('Transaction') || sessionErr.message?.includes('replica')) {
-      console.warn('⚠️  Replica set not available — using sequential writes (dev mode)');
-      const savedPayment = await Payment.create(paymentData);
-      await FeeAssignment.findByIdAndUpdate(assignmentId, { $set: assignmentUpdate });
-      await checkReferralConversion(paymentData.schoolId, null);
-      return savedPayment;
-    }
-    throw sessionErr;
+    if (!(sessionErr.message?.includes('Transaction') || sessionErr.message?.includes('replica'))) throw sessionErr;
+    console.warn('⚠️  Replica set not available — using sequential writes (dev mode)');
+    savedPayment = await Payment.create(paymentData);
+    await FeeAssignment.findByIdAndUpdate(assignmentId, { $set: assignmentUpdate });
   }
+
+  // Referral rewards are idempotent and never apply to cash entries
+  if (paymentData.source !== 'manual') await checkReferralConversion(paymentData.schoolId, null);
+  return savedPayment;
 };
 
 // ─── Main reconciliation entry point ─────────────────────────────────────────
 const processPayment = async ({
-  accountNumber,
+  accountNumber = null,
+  studentId = null,
   amountPaid,
   reference,
   narration     = null,
@@ -62,8 +62,17 @@ const processPayment = async ({
     return { skipped: true, reason: 'duplicate_reference', reference };
   }
 
+  
+
   // 2. Find student by virtual account (either gateway) and note which one matched
-  const student = await Student.findOne({
+  // 2. Find the student
+let student, gateway;
+if (source === 'manual') {
+  student = studentId ? await Student.findOne({ _id: studentId, isActive: true }) : null;
+  if (!student) return { skipped: true, reason: 'unknown_student', studentId };
+  gateway = 'manual';
+} else {
+  student = await Student.findOne({
     isActive: true,
     $or: [
       { 'virtualAccounts.nomba.accountNumber': accountNumber },
@@ -74,8 +83,8 @@ const processPayment = async ({
     console.warn(`⚠️  No student found for account: ${accountNumber}`);
     return { skipped: true, reason: 'unknown_account', accountNumber };
   }
-  const gateway = student.virtualAccounts?.nomba?.accountNumber === accountNumber ? 'nomba' : 'paystack';
-
+  gateway = student.virtualAccounts?.nomba?.accountNumber === accountNumber ? 'nomba' : 'paystack';
+}
   // 3. Oldest open fee assignment
   const feeAssignment = await FeeAssignment.findOne({
     studentId: student._id,
@@ -150,7 +159,7 @@ const processPayment = async ({
     ...(discount.qualifies && { discountApplied: true, discountAmount: discount.discountAmount }),
   };
 
-  const savedPayment = await atomicWrite(paymentData, feeAssignment._id, assignmentUpdate);
+  const savedPayment = await Write(paymentData, feeAssignment._id, assignmentUpdate);
 
   // 6. Result
   const result = {
@@ -205,8 +214,10 @@ const processPayment = async ({
 };
 
 // ─── Manual payment (bursar override) ────────────────────────────────────────
-const processManualPayment = async ({ studentId, amountPaid, reference, narration = 'Manual payment entry', gateway = null, io = null }) => {
-  const student = await Student.findById(studentId);
+const processManualPayment = ({ studentId, amountPaid, reference, narration = 'Manual payment entry', io = null }) =>
+  processPayment({ studentId, amountPaid, reference, narration, source: 'manual', io });  
+
+const student = await Student.findById(studentId);
   if (!student) throw new Error('Student not found');
 
   const resolvedGateway = gateway
@@ -217,7 +228,6 @@ const processManualPayment = async ({ studentId, amountPaid, reference, narratio
 
   const accountNumber = student.virtualAccounts[resolvedGateway].accountNumber;
   return processPayment({ accountNumber, amountPaid, reference, narration, source: 'manual', io });
-};
 
 // ─── Reconciliation summary for one assignment ────────────────────────────────
 const getReconciliationSummary = async (feeAssignmentId) => {

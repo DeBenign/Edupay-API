@@ -5,7 +5,7 @@ import { useAuth }   from '../../context/AuthContext'
 import { useSocket } from '../../context/SocketContext'
 import { ENV_NAME }  from '../../api/axios'
 import { LayoutDashboard, Users, GraduationCap, CreditCard,
-         FileText, Bell, Settings, LogOut, Menu, BookOpen, Wallet, RotateCcw } from 'lucide-react'
+         FileText, Bell, Settings, LogOut, Menu, BookOpen, Wallet, RotateCcw, Gift } from 'lucide-react'
 const NAV = {
   admin:  [
   { to: '/admin', label: 'Dashboard',      icon: LayoutDashboard },
@@ -14,6 +14,7 @@ const NAV = {
   { to: '/admin/overpayments', label: 'Overpayments', icon: RotateCcw },
   { to: '/admin/staff',    label: 'Staff', icon: Users },
   { to: '/admin/settings', label: 'Settings', icon: Settings },
+  { to: '/admin/referrals', label: 'Referral Rewards', icon: Gift }
 ],
   bursar: [
     { to: '/bursar', label: 'Dashboard', icon: LayoutDashboard },
@@ -21,11 +22,13 @@ const NAV = {
     { to: '/bursar/students', label: 'Students', icon: GraduationCap },
     { to: '/bursar/reports', label: 'Reports', icon: FileText },
     { to: '/bursar/overpayments', label: 'Overpayments', icon: CreditCard },
+    { to: '/bursar/referrals', label: 'Referral Rewards', icon: Gift }
   ],
   parent: [
     { to: '/parent',label: 'Dashboard', icon: LayoutDashboard },
     { to: '/parent/children', label: 'My Children',    icon: BookOpen },
     { to: '/parent/payments', label: 'Payment History',icon: CreditCard },
+    { to: '/parent/referrals', label: 'Referral Rewards', icon: Gift }
   ],
 }
 

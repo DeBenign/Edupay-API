@@ -21,7 +21,7 @@ const paymentSchema = new mongoose.Schema({
   processedAt:        { type: Date, default: Date.now },
 
   // ── Platform fee (task 1) ────────────────────────────────────────────────
-  gateway:             { type: String, enum: ['nomba', 'paystack'], required: true },
+  gateway:             { type: String, enum: ['nomba', 'paystack', 'manual'], required: true },
   gatewayFee: { type: Number, default: 0 },
   platformFee:         { type: Number, default: 0 }, // what EduPay deducts before crediting school revenue
   platformFeeWaived:   { type: Boolean, default: false }, // true if a referral waiver was active at payment time

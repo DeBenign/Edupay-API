@@ -53,7 +53,7 @@ const createManualPayment = async (req, res) => {
   try {
     if (req.user.role === 'parent') return forbidden(res, 'Access denied');
 
-    const { studentId, reference, narration, gateway } = req.body;
+    const { studentId, reference, narration } = req.body;
     const amountPaid = Number(req.body.amountPaid);
     if (!studentId || !reference || !Number.isFinite(amountPaid)) {
       return badRequest(res, 'studentId, amountPaid, and reference are required');
@@ -67,7 +67,7 @@ const createManualPayment = async (req, res) => {
     if (access.code) return denyAccess(res, access.code);
 
     const io = req.app.locals.io || null;
-    const result = await processManualPayment({ studentId, amountPaid, reference, narration, gateway, io });
+    const result = await processManualPayment({ studentId, amountPaid, reference, narration, io });
 
     if (result.skipped) return badRequest(res, `Payment skipped: ${result.reason}`);
     return created(res, { result }, 'Manual payment recorded successfully');
@@ -203,6 +203,13 @@ const approveRefund = async (req, res) => {
       reconciliationStatus: 'overpayment',
     }).sort({ processedAt: -1 });
 
+    // Cash overpayments are returned by the school itself, so just record that it happened
+    if (payment?.gateway === 'manual') {
+      const done = await claimResolution(assignment._id, 'refund_requested', 'refunded');
+      if (!done) return badRequest(res, 'Refund already processed');
+      return success(res, { manual: true }, 'Marked as refunded. Return the cash to the parent yourself.');
+    }
+    
     if (!payment?.payerAccountNumber) {
       return badRequest(res, 'No payer account details on file for this payment — cannot refund');
     }

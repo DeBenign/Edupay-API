@@ -33,14 +33,12 @@ const schoolSchema = new mongoose.Schema({
   },
 }, { timestamps: true });
 
-schoolSchema.pre('validate', function (next) {
+schoolSchema.pre('validate', function () {
   if (!this.referralCode) {
-    // e.g. "GREENFIELD-7K2N" — human-shareable, still collision-resistant
     const prefix = (this.name || 'SCHL').replace(/[^A-Za-z]/g, '').slice(0, 8).toUpperCase() || 'SCHL';
     const suffix = crypto.randomBytes(4).toString('hex').toUpperCase().slice(0, 6);
     this.referralCode = `${prefix}-${suffix}`;
   }
-  next();
 });
 
 module.exports = mongoose.models.School || mongoose.model('School', schoolSchema);

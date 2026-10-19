@@ -20,11 +20,10 @@ const userSchema = new mongoose.Schema({
 referralCode: { type: String, unique: true, sparse: true, uppercase: true },
 }, { timestamps: true });
 
-userSchema.pre('validate', function (next) {
-  if (!this.referralCode) {
-    this.referralCode = `REF-${crypto.randomBytes(4).toString('hex').toUpperCase().slice(0, 8)}`;
-  }
-  next();
+// User.js: the usual shape
+userSchema.pre('save', async function () {
+  if (!this.isModified('password')) return;
+  this.password = await bcrypt.hash(this.password, 12);
 });
 
 // Hash password — async hook, NO next() parameter in Mongoose 7+

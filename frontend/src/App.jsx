@@ -6,6 +6,7 @@ import { AuthProvider, useAuth }   from './context/AuthContext'
 import { SocketProvider }          from './context/SocketContext'
 import { PageLoader }              from './components/ui'
 import DashboardLayout             from './components/layout/DashboardLayout'
+import ReferralClaim from './pages/admin/ReferralClaim'
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 import Login    from './pages/auth/Login'
@@ -102,6 +103,12 @@ export default function App() {
               <WithLayout><AdminSettings /></WithLayout>
             </Protected>
           }/>
+
+          {['admin', 'bursar', 'parent'].map(role => (
+          <Route key={role} path={`/${role}/referrals`} element={
+            <Protected roles={[role]}><WithLayout><ReferralClaim /></WithLayout></Protected>
+          } />
+        ))}
 
           {/* ── Bursar ──────────────────────────────────────────────────────── */}
           <Route path="/bursar" element={

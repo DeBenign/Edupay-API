@@ -102,7 +102,9 @@ export const withdrawalAPI = {
 
 // ─── Referrals ────────────────────────────────────────────────────────────────
 export const referralAPI = {
-  list:         (params) => api.get('/referrals', { params }),
-  rewardWaiver: (id) => api.post(`/referrals/${id}/reward/fee-waiver`),
-  rewardAirtime:(id) => api.post(`/referrals/${id}/reward/airtime`),
+  list:         (params)         => api.get('/referrals', { params }),
+  rewardWaiver: (id)             => api.post(`/referrals/${id}/reward/fee-waiver`),
+  myRewards:    ()               => api.get('/referrals/rewards'),
+  claimReward:  (rewardId, data) => api.post(`/referrals/rewards/${rewardId}/claim`, data),
+  dataPlans: (params) => api.get('/referrals/data-plans', { params }),
 }

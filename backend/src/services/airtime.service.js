@@ -36,7 +36,7 @@ const callProvider = async ({ phone, amount, network }) => {
 };
 
 // Returns { success, reference, raw }
-const topUpAirtime = async ({ phone, amount = 2000, network = 'mtn' }) => {
+const topUpAirtime = async ({ phone, amount = 1000, network = 'mtn' }) => {
   if (!phone) throw new Error('Phone number is required for airtime top-up');
   try {
     const result = await callProvider({ phone, amount, network });

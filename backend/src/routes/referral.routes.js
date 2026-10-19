@@ -17,5 +17,6 @@ router.post('/rewards/:rewardId/claim', protect, claimReward);
 router.use(protect, requirePlatformAdmin);
 router.get('/', listReferrals);
 router.post('/:id/reward/fee-waiver', rewardFeeWaiver);
+router.get('/data-plans', protect, getDataPlans);
 
 module.exports = router;
