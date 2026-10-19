@@ -8,6 +8,7 @@ const { env }    = require('./config/env');
 const { errorHandler, notFoundHandler } = require('./middleware/errorHandler');
 const { captureRawBody, verifyWebhookSignature } = require('./middleware/webhook.middleware');
 
+
 const app = express();
 
 app.set('trust proxy', 1);
@@ -52,6 +53,7 @@ app.use('/api/parents',       require('./routes/parent.routes'));
 app.use('/api/referrals',     require('./routes/referral.routes'));
 app.use('/api/revenue',       require('./routes/revenue.routes'));
 app.use('/api/withdrawals',   require('./routes/withdrawal.routes'));
+app.use('/api/subscriptions', require('./routes/subscription.routes'));
 
 // ── Error handlers ────────────────────────────────────────────────────────────
 app.use(notFoundHandler);
