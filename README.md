@@ -2,63 +2,116 @@
 
 **School fee payment infrastructure for Nigerian schools.**
 
-Every student gets dedicated virtual bank accounts. Parents pay from any bank. Every payment is reconciled automatically: no manual matching, no shared accounts, no missed payments.
+Every student gets a clear balance that every dashboard agrees on. Fees are collected two ways: **online**, into dedicated virtual bank accounts that reconcile themselves, or **manually**, recorded by the bursar when a parent pays at the school. Either way, the admin, the bursar and the parent all see the same numbers.
 
 ---
 
 ## The problem
 
-School fee collection in Nigeria still runs on shared bank accounts and manual reconciliation. A bursar has to look at a stream of bank alerts and guess, from names and amounts, which parent paid for which child. Typos, same-name students, and payments from a relative's account all break this. Underpayments go unnoticed until a term is already underway. Overpayments sit unresolved because nobody has time to chase them down. Parents have no way to check a balance without calling the school.
+School fee collection in Nigeria still runs on shared bank accounts, paper receipts and manual reconciliation. A bursar has to guess, from names and amounts, which parent paid for which child. Underpayments go unnoticed until a term is underway. Overpayments sit unresolved. Parents cannot check a balance without calling the school.
 
 ## What EduPay does
 
-EduPay gives every student their own dedicated virtual accounts, provisioned automatically on enrollment on **both Nomba and Paystack**, so a parent can pay into either. A payment into one of those accounts is unambiguous the moment it lands: there is no inference and no guessing, because the account itself identifies the student.
-
-Every payment is classified instantly:
-
-- ✅ **Exact**: fee fully paid
-- ⚠️ **Underpayment**: partial, with the running balance tracked across future payments
-- 🔁 **Overpayment**: excess flagged, with the parent choosing how it is resolved (refund or credit toward next term)
-
-Parents are shown exactly what to transfer, the school fee plus a small service charge, along with any early-payment offer. Admins, bursars, and parents each get a real-time dashboard scoped to what they need: school-wide collection status, a live payment feed, or a single family's balance.
+- **One source of truth for fees.** Fee structures per class, term and session; each student has a balance that updates with every payment.
+- **Two ways money arrives.**
+  - *Online:* each student can hold dedicated accounts on **Nomba** and **Paystack**. A transfer into one identifies the student automatically and reconciles in seconds.
+  - *Manual:* the bursar records cash, cheque, POS or a transfer to the school's own account against a receipt number. It reconciles through the same engine.
+- **Every payment is classified:** ✅ exact, ⚠️ underpayment (balance tracked), 🔁 overpayment (the parent chooses a refund or a credit toward next term).
+- **Real-time dashboards** for admins, bursars and parents, each scoped to what they need.
 
 ---
 
 ## Who it's for
 
-- **School administrators** who need visibility into fee collection without building or maintaining their own finance software.
-- **Bursars** who are currently reconciling payments by hand against bank statements or WhatsApp alerts.
-- **Parents** who want to know their child's balance, and what to pay, without a phone call to the school office.
+- **School administrators** who need collection visibility without building finance software.
+- **Bursars** reconciling by hand against bank alerts and receipt books.
+- **Parents** who want their child's balance, and what to pay, without calling the school.
 
 ---
 
-## How it works
+## Flow of operation
 
-1. **A student is enrolled**, and EduPay provisions a Nomba account and a Paystack account for them. If one gateway is down, the other still provisions, and a retry fills in the missing one.
-2. **A parent sees what to transfer** (fee plus service charge, and any early-payment offer) and pays into either account from any Nigerian bank. No new app, no change in behavior.
-3. **The payment reconciles itself.** EduPay's engine matches it to the student, updates the balance, and pushes the update live to every relevant dashboard.
+### 1. Setup (admin, once)
 
-## Two accounts per student, not one gateway per school
+```
+Register as admin → create the school (optional referral code)
+   → save the payout bank account (Revenue page)
+   → create the bursar and parent accounts (Staff)
+   → create a fee structure per class / term / session → assign it to the class
+   → enroll students (online accounts are provisioned automatically when the gateways are available)
+```
 
-EduPay integrates **Nomba** and **Paystack** side by side. Each student holds an account on both, so parents get a choice and a school's fee collection does not stop because one provider has an outage. It also gives EduPay room to negotiate and adapt as its own volume grows.
+### 2. Money arrives: two paths into one engine
+
+**Path A: online (parents transfer to the student's account)**
+
+```
+Parent sees: "Transfer ₦10,254" (₦10,000 fee + ₦254 service charge) and the account numbers
+   │
+Parent pays from any bank
+   │
+Gateway webhook → signature verified (rejected if invalid)
+   │
+Engine: skip if already processed → find the student by account number
+   → take the service charge from the amount received
+   → credit the rest to the OLDEST open fee
+   → apply the early-payment rule → classify exact / under / over
+   → save payment + balance together → notify → push live update
+   → record the gateway's own fee → check referral rewards
+```
+
+**Path B: manual (parent pays at the school)**
+
+```
+Parent pays the school: cash, cheque, POS, or a transfer to the school's own account
+   │
+Bursar opens the student → Record Payment (method + unique receipt number + amount)
+   │
+Same engine: oldest open fee first → early-payment rule → exact / under / over
+   → NO service charge (no gateway touched the money)
+   → NOT counted as withdrawable (the school already holds the money)
+   → NO referral conversion
+   │
+Balances update on the admin, bursar and parent dashboards and in the live feed
+```
+
+### 3. What each role sees and does
+
+| Role | Does | Sees |
+|---|---|---|
+| **Admin** | Setup, fees, one-off fees, hardship adjustments, class promotion, overpayment refunds, payout account, withdrawals | Collection totals, students, overpayments, revenue, subscription status, referral codes |
+| **Bursar** | Records manual payments, monitors the live feed, reads reports, handles overpayments | Student statements, class breakdown, balances, revenue (view only) |
+| **Parent** | Links a child, reads balances, pays online or at the school, resolves overpayments, claims referral rewards | Balance and progress, the exact amount to transfer, any early-payment offer, payment history |
+| **Platform admin** | Records subscription payments, reviews schools and referrals | Every school's status and student count |
+
+### 4. Overpayments
+
+```
+Payment exceeds the fee → status "overpaid"
+   → the parent chooses: refund to the paying account, or credit to next term
+   → credit: reduces next term's fee (needs next term's fee structure to exist)
+   → refund: the school approves it on the Overpayments page
+        online payment → sent back through the gateway
+        cash payment   → marked refunded; the school returns the cash itself
+```
+
+### 5. Withdrawals
+
+```
+Available = online money the school earned − withdrawals − overpayments owed back
+   (cash payments never count: that cash was never in the gateway wallet)
+Admin requests a withdrawal → it goes ONLY to the saved payout account
+   → concurrent requests cannot overdraw
+   → the request stays "processing" until the transfer is confirmed
+```
 
 ---
 
-## How EduPay sustains itself
+## Money rules
 
-EduPay is not a free tool subsidized indefinitely. Its model is built in from the start and is visible to everyone who pays:
+### Service charge (online payments only)
 
-- **A service charge**, shown to the parent and added on top of the school fee, so the school always receives its full fee.
-- **An early-payment discount**, funded by the school, that rewards parents for paying ahead of the due date.
-- **A referral program**: schools that refer other schools earn a month of waived service charges; individual staff and parents who refer a new school earn an airtime reward.
-
----
-
-## Monetization
-
-### Service charge
-
-The charge is added on top of the school fee and paid by the parent.
+Added on top of the school fee and paid by the parent, so the school always receives its full fee.
 
 | Component | Value |
 |---|---|
@@ -66,52 +119,50 @@ The charge is added on top of the school fee and paid by the parent.
 | Flat fee | ₦100 (waived for transfers of ₦2,500 or less) |
 | Cap | ₦2,000 per transfer |
 
-Parents are shown the exact amount to transfer so the school nets its full balance:
-
 | School fee | Parent transfers | Service charge | School receives |
 |---|---|---|---|
 | ₦1,000 | ₦1,015 | ₦15 | ₦1,000 |
 | ₦10,000 | ₦10,254 | ₦254 | ₦10,000 |
 | ₦100,000 | ₦101,624 | ₦1,624 | ₦100,000 |
 
-The charge is taken from each transfer as it arrives, so instalments work the same way: each carries its own charge, and only the remainder counts toward the fee balance. Cash payments recorded by a bursar carry no service charge. A referral reward can waive the charge for a month.
-
-EduPay also records the gateway's own fee on every payment, so platform revenue is reported both gross (service charges) and net (service charges minus gateway fees).
+The charge is calculated on each transfer as it arrives, so instalments follow the same rule. EduPay records the gateway's own fee on every payment, so platform revenue is reported gross and net.
 
 ### Early-payment discount
 
-A parent whose first payment on a fee covers at least 90% of it, made on or before the due date, has that fee settled in full. The school absorbs the difference. One-off fees (uniform, trips) never qualify. Parents see the discounted amount and the deadline on their dashboard.
+A first payment, made on or before the due date, that covers at least 90% (but less than 100%) of a term fee settles that fee in full. The school absorbs the difference. One-off fees never qualify.
+
+### Manual payments
+
+No service charge, no referral conversion, not withdrawable. Each needs a unique receipt number, which also blocks double entry.
+
+---
+
+## How EduPay earns
+
+- **Service charge margin** on online payments (service charge minus the gateway's fee).
+- **Subscription** per school per term, recorded by the platform admin. New schools get a free pilot of 120 days. Schools see a banner as it ends. Nothing is locked.
+- **Referral rewards** are paid only from real online margin (see below), so they never cost more than they earn.
 
 ### Referral program
 
-Every school, and every admin, bursar, or parent within it, has a personal referral code. Referrals convert automatically the moment the referred school makes its first payment:
+| Referrer | Reward |
+|---|---|
+| A school | 30 days of waived service charges (stacks, capped 90 days ahead) |
+| An admin, bursar or parent | ₦1,000 as airtime or a data plan, claimed from their own dashboard |
 
-| Referrer | Reward | How it's delivered |
-|---|---|---|
-| A school | One month of waived service charges, starting from its next payment | Automatic |
-| An individual (admin, bursar, or parent) | Airtime reward | Self-serve: claimed from their own dashboard by entering a phone number |
-
-A referrer earns a separate reward for each different school they successfully refer.
-
-### Revenue visibility and withdrawal
-
-Schools see their own revenue, and platform administrators see revenue across every school, computed live from the payment ledger rather than a separately maintained balance. A school withdraws to its own bank account on request through the gateway's transfer infrastructure.
-
-A school's withdrawable balance counts only money that actually passed through a gateway (cash entries are excluded) and holds back overpayments that are owed back or already refunded.
-
-### Overpayment resolution
-
-When a payment exceeds what is owed, the parent chooses what happens to the excess: a refund to the account it came from (approved by the school), or a credit applied to the student's next term.
+- A reward unlocks when the referred school has earned the platform ₦2,000 of real net margin from online payments. Cash entries never count.
+- At most 5 rewards per referrer per 30 days.
+- Self-referrals are blocked: same school, the referrer works at the referred school, the same payout bank, or the same phone number.
+- Purchases are retry-proof: every attempt has its own provider request ID, and a timed-out attempt is re-checked, never re-bought.
 
 ---
 
 ## School administration
 
-- **Fee structures** per class, term, and session, assigned to a whole class or a single student.
-- **One-off fees** (uniform, excursion) added to a single student without touching the class fee.
-- **Hardship adjustments**: a school can reduce one student's fee. A written reason is required and kept as an audit note.
-- **Class promotion**: promote or graduate a whole class, with a preview first. Old fee records stay on each student's account.
-- **Manual payments** for cash or cheque, recorded by a bursar.
+- **Fee structures** per class, term and session, assigned to a class or one student.
+- **One-off fees** (uniform, excursion) added to a single student.
+- **Hardship adjustments:** an admin can reduce one student's fee. A written reason is required and kept as an audit note.
+- **Class promotion** with a preview first; graduating a class deactivates its students. Old fee records stay on each account.
 
 ---
 
@@ -119,78 +170,33 @@ When a payment exceeds what is owed, the parent chooses what happens to the exce
 
 **Backend:** Node.js, Express, MongoDB, Redis, Socket.io
 **Frontend:** React, Vite, Tailwind CSS
-**Payments:** Nomba and Paystack, in parallel
-**Airtime rewards:** VTpass (MTN, Glo, Airtel, 9mobile)
+**Payments:** Nomba and Paystack in parallel; **Airtime and data rewards:** VTpass
 
 ```
-backend/
-└── src/
-    ├── models/          User, School, Student, FeeStructure, FeeAssignment,
-    │                    Payment, Withdrawal, Referral, ReferralReward, WebhookLog
-    ├── controllers/     auth, school, student, fee, payment, webhook, report,
-    │                    notification, parent, referral, revenue, withdrawal
-    ├── routes/
-    ├── services/
-    │   ├── reconciliation.service.js        core reconciliation engine
-    │   ├── virtualAccount.service.js        provisions both accounts per student
-    │   ├── paymentInstructions.service.js   what a parent should transfer
-    │   ├── platformFee.service.js           service charge
-    │   ├── earlyPaymentDiscount.service.js
-    │   ├── fee.service.js                   next-term lookup
-    │   ├── revenue.service.js, withdrawal.service.js
-    │   ├── nomba.service.js, paystack.service.js (+ mappers)
-    │   ├── referral.service.js, vtu.service.js
-    │   └── transaction.service.js           hourly sync
-    ├── middleware/      auth, roles, webhook signature verification
-    ├── sockets/
-    └── jobs/
+backend/src/
+├── models/        User, School, Student, FeeStructure, FeeAssignment, Payment, Withdrawal,
+│                  Referral, ReferralReward, SubscriptionPayment, WebhookLog
+├── controllers/   auth, school, student, fee, payment, webhook, report, notification, parent,
+│                  referral, revenue, withdrawal, subscription
+├── services/      reconciliation, virtualAccount, paymentInstructions, platformFee,
+│                  earlyPaymentDiscount, fee, revenue, withdrawal, referral, vtu,
+│                  nomba, paystack (+ mappers), transaction (hourly sync)
+├── middleware/    auth, roles, platform admin, webhook signature verification
+└── routes/, sockets/, jobs/
 
-frontend/
-└── src/
-    ├── pages/
-    │   ├── Home.jsx                 public marketing site
-    │   ├── auth/                    role-aware login and registration
-    │   ├── admin/, bursar/, parent/ role-scoped dashboards
-    │   └── ReferralClaim.jsx
-    ├── components/
-    ├── context/
-    └── api/
-```
-
-### How reconciliation works
-
-```
-Parent transfers ₦10,254 to a student's virtual account
-(₦10,000 school fee + ₦254 service charge)
-          │
-          ▼
-Gateway fires a webhook → signature verified (rejects if anything is off)
-          │
-          ▼
-Reconciliation engine:
-  1. Confirms this payment hasn't already been processed
-  2. Finds the student by their virtual account number (either gateway)
-  3. Takes the service charge from the amount received (unless waived)
-  4. Credits the remainder to the oldest open fee balance
-  5. Checks for an early-payment discount
-  6. Classifies the result: exact, underpayment, or overpayment
-  7. Writes the payment and updated balance together, atomically, and in
-     the same step converts any pending referral if this is the school's
-     first payment
-  8. Pushes the update live to every relevant dashboard
-          │
-          ▼
-An hourly sync job catches anything a webhook missed
+frontend/src/
+├── pages/         Home, auth, admin, bursar, parent, shared (referral rewards)
+└── components/, context/, api/
 ```
 
 ### Webhooks
 
 | Gateway | Event handled | Verification |
 |---|---|---|
-| Nomba | `payment_success` where the transaction type is `vact_transfer` | HMAC-SHA256 over the documented field string plus `nomba-timestamp`, keyed with the signature key set in the Nomba dashboard |
+| Nomba | `payment_success` where the transaction type is `vact_transfer` | HMAC-SHA256 over the documented field string plus `nomba-timestamp`, keyed with the signature key from the Nomba dashboard |
 | Paystack | `charge.success` | HMAC-SHA512 over the raw body, keyed with the secret key |
 
-Requests that fail verification are rejected and logged. Every accepted webhook is stored for audit and replay, scoped to the school it belongs to.
+Requests that fail verification are rejected and logged. Accepted webhooks are stored for audit and replay, scoped to the school. An hourly sync catches anything a webhook missed.
 
 ---
 
@@ -198,111 +204,89 @@ Requests that fail verification are rejected and logged. Every accepted webhook 
 
 | Decision | Why |
 |---|---|
-| One permanent account per student per gateway, across terms | Parents never have to type a reference correctly |
+| One engine for online and manual payments | Every dashboard always agrees |
 | The service charge is added on top of the fee | The school always receives its full fee |
-| The charge is calculated on each transfer as it arrives | Full payments and instalments follow the same rule |
-| Payment records are append-only | A complete, unmodifiable audit trail |
-| Idempotent payment processing | A webhook firing twice never creates a duplicate payment |
-| Atomic writes across payment, balance, and referral conversion | These succeed together or not at all |
-| Referral rewards trigger on the referred school's first payment | A referral that never pays costs the platform nothing |
-| Airtime rewards are claimed by the recipient | The person earning the reward decides when to use it |
-| The parent chooses how an overpayment is resolved | It is their money |
-| Oldest fee balance is cleared first | Arrears resolve in the order they were incurred |
-| Withdrawable balance counts only gateway money | Cash a school already holds can never be paid out of the wallet |
+| Charges are calculated per transfer | Full payments and instalments follow one rule |
+| Payment records are append-only and idempotent | A complete audit trail; a webhook firing twice never duplicates |
+| Oldest fee is cleared first | Arrears resolve in the order they were incurred |
+| Withdrawable balance counts only gateway money | Cash a school already holds is never paid out of the wallet |
+| Withdrawals go only to the saved payout account | A compromised login cannot redirect funds |
 | Webhook verification rejects by default | A forged "payment" cannot mark a student paid |
+| Referral rewards come from real margin | A referral never costs more than it earns |
 
 ---
 
 ## API overview
 
 ```
-Authentication     /api/auth/*
-Schools            /api/schools/*
-Students           /api/students/*
-Fees               /api/fees/*
-Payments           /api/payments/*
-Webhooks           /api/webhooks/*
-Reports            /api/reports/*
-Revenue            /api/revenue/*
-Withdrawals        /api/withdrawals/*
-Referrals          /api/referrals/*
-Parent portal      /api/parents/*
+/api/auth          /api/schools        /api/students      /api/fees
+/api/payments      /api/webhooks       /api/reports       /api/revenue
+/api/withdrawals   /api/referrals      /api/parents       /api/subscriptions
 ```
-
-Endpoint-level detail lives alongside each route file in `backend/src/routes/`.
 
 ---
 
-## Running EduPay locally
+## Running locally
 
 ### Prerequisites
 
-- Node.js 18+
-- MongoDB (local or Atlas)
-- Redis, if your setup uses queued jobs (confirm before installing, since not every environment needs it)
-- Nomba and Paystack developer accounts; a VTpass sandbox account for airtime rewards
-- Paystack dedicated virtual accounts must be enabled on your Paystack business (Paystack activates this on request)
+Node.js 18+, MongoDB, Redis if your setup uses queued jobs, Nomba and Paystack developer accounts, and a VTpass account for rewards. Paystack dedicated virtual accounts must be enabled on your Paystack business (Paystack activates this on request).
 
 ### Setup
 
 ```bash
-# Backend
-cd backend
-npm install
-cp .env.example .env    # fill in real credentials. Never commit this file
-npm run dev              # http://localhost:5000
-
-# Frontend
-cd frontend
-npm install
-cp .env.example .env
-npm run dev              # http://localhost:5173
+cd backend  && npm install && cp .env.example .env && npm run dev   # http://localhost:5000
+cd frontend && npm install && cp .env.example .env && npm run dev   # http://localhost:5173
 ```
 
-### Environments
+One-time scripts, when upgrading an older database: `scripts/syncFeeIndexes.js`, `scripts/backfillReferralCodes.js`, `scripts/migrateVirtualAccounts.js`.
 
-Nomba credentials only work against the matching host, so keep the two environments separate:
+### Environments
 
 | | Credentials | `NOMBA_BASE_URL` | Database |
 |---|---|---|---|
 | Local | Nomba TEST | `https://sandbox.nomba.com` | its own database |
 | Production | Nomba LIVE | `https://api.nomba.com` | production database |
 
-Accounts created with sandbox credentials are simulated and cannot receive real money. Set `NODE_ENV=production` in production.
+Sandbox accounts are simulated and cannot receive real money. Set `NODE_ENV=production` in production.
 
 ### Key environment variables
 
 | Variable | Purpose |
 |---|---|
-| `NOMBA_BASE_URL` | Host only, no `/v1` suffix |
-| `NOMBA_CLIENT_ID`, `NOMBA_SECRET_KEY` | Nomba API credentials for the chosen environment |
-| `NOMBA_ACCOUNT_ID`, `NOMBA_SUB_ACCOUNT_ID` | Parent account and sub-account |
+| `NOMBA_BASE_URL`, `NOMBA_CLIENT_ID`, `NOMBA_SECRET_KEY`, `NOMBA_ACCOUNT_ID`, `NOMBA_SUB_ACCOUNT_ID` | Nomba API access (host only, no `/v1`) |
 | `NOMBA_WEBHOOK_SECRET` | Signature key set in Nomba dashboard → Developer → Webhook Setup |
-| `PAYSTACK_SECRET_KEY` | Paystack secret key (`sk_test_…` or `sk_live_…`) |
-| `PAYSTACK_PREFERRED_BANK` | `test-bank` in Paystack test mode |
-| `PAYSTACK_MOCK_MODE` | Development only: fakes Paystack accounts until DVA is enabled |
-| `WEBHOOK_SKIP_VERIFY` | Development only: skips signature checks for manual testing. Ignored in production |
+| `PAYSTACK_SECRET_KEY`, `PAYSTACK_PREFERRED_BANK` | Paystack access (`test-bank` in test mode) |
+| `PAYSTACK_MOCK_MODE` | Development only: fakes Paystack accounts |
+| `WEBHOOK_SKIP_VERIFY` | Development only: skips signature checks. Ignored in production |
+| `VTPASS_BASE_URL`, `VTPASS_API_KEY`, `VTPASS_SECRET_KEY`, `VTPASS_PUBLIC_KEY` | Airtime and data rewards |
+| `SUBSCRIPTION_PRICE_PER_TERM` | Subscription price shown to schools |
+| `REFERRAL_REWARD_AMOUNT`, `REFERRAL_UNLOCK_MARGIN`, `REFERRAL_MAX_REWARDS_PER_MONTH` | Optional referral tuning |
 
-**A note on `.env.example`:** it is a template and must only ever contain placeholder values. Never commit a real database URI, API key, or secret. Treat any committed secret as compromised and rotate it immediately, however quickly it is removed.
+Never commit real credentials. Treat any committed secret as compromised and rotate it.
+
+---
+
+## Testing
+
+Follow **[TEST.md](./TEST.md)**. It walks through every role in order: setup, manual payments, parent views, overpayments, fee tools, revenue, referrals, subscriptions, online payments and security checks. Manual mode can be tested end to end today with no gateway.
 
 ---
 
 ## Roadmap
 
-**Built:** dual-account provisioning, reconciliation, service charge, early-payment discount, referral conversion and airtime claims, revenue and withdrawals, overpayment resolution, hardship adjustments, one-off fees, class promotion.
+**Built:** fee management, manual and online reconciliation, service charge, early discount, overpayment resolution, hardship adjustments, one-off fees, class promotion, referral rewards, revenue and withdrawals, subscription billing.
 
-**Verifying end to end:** live Nomba payments and webhook delivery. Paystack dedicated accounts are waiting on Paystack's activation of the feature.
+**Verifying end to end:** live Nomba payments and webhooks; Paystack dedicated accounts, pending Paystack's activation.
 
-**Next:** a per-school switch for the early-payment discount, payout webhooks to confirm withdrawals and refunds, confirming each payment with the gateway before crediting, and subscription tiers as the long-term monetization model.
+**Next:** payout webhooks to confirm withdrawals and refunds, per-gateway withdrawable balances, a per-school switch for the early discount, school-issued codes for linking children, and confirming each payment with the gateway before crediting.
 
 ---
 
 ## Origin
 
-EduPay began as a project for the DevCareer × Nomba Hackathon (Virtual Account Infrastructure track) and has since continued as an independent product aimed at real school adoption.
+EduPay began as a project for the DevCareer × Nomba Hackathon (Virtual Account Infrastructure track) and has continued as an independent product for real school adoption.
 
 **Built by:** Yusuf Ibrahim Olalekan
-
----
 
 *Node.js · Express · MongoDB · Redis · Socket.io · React · Tailwind CSS · Nomba · Paystack · VTpass*

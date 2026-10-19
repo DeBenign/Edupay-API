@@ -1,11 +1,5 @@
 // src/middleware/platformAdmin.middleware.js
-//
-// The existing 'admin' role is a SCHOOL admin (scoped to their own school).
-// Platform-operator actions — approving referral rewards, viewing revenue
-// across all schools, withdrawing platform revenue — need a separate,
-// narrower gate so no school admin can approve their own referral reward
-// or see another school's numbers.
-//
+
 // Set PLATFORM_ADMIN_EMAILS in your env as a comma-separated list of the
 // EduPay team's own login emails.
 const { forbidden } = require('../utils/apiResponse');
