@@ -20,12 +20,28 @@ export default function Register() {
     try {
       const res   = await authAPI.register(form)
       const { token, user } = res.data.data
-      localStorage.setItem('edupay_token', token)
+      localStorage.setItem('token', token)
       localStorage.setItem('edupay_user', JSON.stringify(user))
       navigate(user.role === 'admin' ? '/admin' : '/parent')
     } catch (err) {
-      setError(err.response?.data?.message || 'Registration failed.')
-    } finally { setLoading(false) }
+        console.error('Registration error:', {
+          message: err.message,
+          code: err.code,
+          status: err.response?.status,
+          response: err.response?.data,
+          url: err.config?.url,
+          baseURL: err.config?.baseURL,
+        })
+
+        setError(
+          err.response?.data?.message ||
+          (err.code === 'ERR_CANCELED'
+            ? 'Registration request was canceled. Check the browser console.'
+            : err.code === 'ECONNABORTED'
+              ? 'Request timed out. Check the backend server.'
+              : 'Registration failed. Check the browser console.')
+        )
+      } finally { setLoading(false) }
   }
 
   return (
@@ -61,7 +77,7 @@ export default function Register() {
               <label className="block text-sm font-medium text-gray-700 mb-1.5">Role</label>
               <select className="input" value={form.role} onChange={set('role')}>
                 <option value="admin">School Admin</option>
-                <option value="parent">Bursar</option>
+                <option value="bursar">Bursar</option>
                 <option value="parent">Parent</option>
               </select>
             </div>
