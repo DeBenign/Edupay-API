@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useAuth }   from '../../context/AuthContext'
 import { useSocket } from '../../context/SocketContext'
+import SubscriptionBanner from '../SubscriptionBanner'
 import { ENV_NAME }  from '../../api/axios'
 import { LayoutDashboard, Users, GraduationCap, CreditCard,
          FileText, Bell, Settings, LogOut, Menu, BookOpen, Wallet, RotateCcw, Gift } from 'lucide-react'

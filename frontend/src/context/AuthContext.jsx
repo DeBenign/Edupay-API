@@ -23,14 +23,14 @@ export const AuthProvider = ({ children }) => {
   const login = useCallback(async (email, password) => {
     const res  = await authAPI.login({ email, password })
     const { user, token } = res.data.data
-    localStorage.setItem('edupay_token', token)
+    localStorage.setItem('token', token)
     localStorage.setItem('edupay_user',  JSON.stringify(user))
     setUser(user)
     return user
   }, [])
 
   const logout = useCallback(() => {
-    localStorage.removeItem('edupay_token')
+    localStorage.removeItem('token')
     localStorage.removeItem('edupay_user')
     setUser(null)
   }, [])

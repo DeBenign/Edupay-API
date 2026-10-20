@@ -8,6 +8,7 @@ import { PageLoader }              from './components/ui'
 import DashboardLayout             from './components/layout/DashboardLayout'
 import ReferralClaim from './pages/admin/ReferralClaim'
 import Revenue from './pages/admin/Revenue'
+import Subscriptions from './pages/admin/Subscriptions'
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 import Login    from './pages/auth/Login'

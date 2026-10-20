@@ -5,8 +5,6 @@ import { Alert, Spinner } from '../../components/ui'
 import { formatCurrency } from '../../utils/formatters'
 import { useAuth } from '../../context/AuthContext'
 
-const { user } = useAuth()
-
 const NETWORKS = ['mtn', 'glo', 'airtel', '9mobile']
 
 function RewardCard({ reward, onDone }) {
@@ -91,6 +89,9 @@ function RewardCard({ reward, onDone }) {
 }
 
 export default function ReferralClaim() {
+
+  const { user } = useAuth()
+  
   const [rewards, setRewards] = useState([])
   const [loading, setLoading] = useState(true)
   const [notice,  setNotice]  = useState(null)

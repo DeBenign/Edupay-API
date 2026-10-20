@@ -80,55 +80,63 @@ function LedgerTicker() {
   );
 }
 
-function LoginMenu({ mobile = false }) {
-  const [open, setOpen] = useState(false);
-  const portals = [
-    { label: "Admin", href: "/login/admin" },
-    { label: "Bursar", href: "/login/bursar" },
-    { label: "Parent", href: "/login/parent" },
-  ];
 
-  
+function LoginMenu({ mobile = false }) {
+  const [open, setOpen] = useState(false)
+
+  const portals = [
+    { label: 'Admin', href: '/login/admin' },
+    { label: 'Bursar', href: '/login/bursar' },
+    { label: 'Parent', href: '/login/parent' },
+  ]
+
   if (mobile) {
     return (
       <div className="flex flex-col gap-2 mt-2">
         {portals.map((p) => (
-          <a
+          <Link
             key={p.label}
-            href={p.href}
+            to={p.href}
             className="px-4 py-2 rounded-lg bg-[#132840] text-[#E7EDF3] text-sm font-medium"
           >
             {p.label} login
-          </a>
+          </Link>
         ))}
       </div>
-    );
+    )
   }
 
   return (
     <div className="relative">
       <button
+        type="button"
         onClick={() => setOpen((o) => !o)}
-        onBlur={() => setTimeout(() => setOpen(false), 150)}
+        aria-expanded={open}
         className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#00B87C] text-[#0B1B2B] text-sm font-semibold hover:bg-[#00A46E] transition-colors"
       >
-        Log in <ChevronDown size={15} className={`transition-transform ${open ? "rotate-180" : ""}`} />
+        Log in
+        <ChevronDown
+          size={15}
+          className={`transition-transform ${open ? 'rotate-180' : ''}`}
+        />
       </button>
+
       {open && (
         <div className="absolute right-0 mt-2 w-44 rounded-xl bg-[#0F2135] border border-[#1F3247] shadow-xl overflow-hidden z-20">
           {portals.map((p) => (
-            <a
+            <Link
               key={p.label}
-              href={p.href}
+              to={p.href}
+              onClick={() => setOpen(false)}
               className="block px-4 py-3 text-sm text-[#E7EDF3] hover:bg-[#16283C] transition-colors"
             >
               {p.label} portal
-            </a>
+            </Link>
           ))}
         </div>
       )}
     </div>
-  );
+  )
 }
 
 export default function Home() {
@@ -211,13 +219,13 @@ export default function Home() {
               no statements, no manual matching, no chasing bursars.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
-              <a
-                href="/login/admin"
+              <Link
+                to="/login/admin"
                 className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-[#00B87C] text-[#0B1B2B] text-[14px] font-semibold hover:bg-[#00A46E] transition-colors"
               >
                 Set up your school <ArrowRight size={16} />
-              </a>
-              <a
+              </Link>
+                <a
                 href="#how-it-works"
                 className="inline-flex items-center gap-2 px-6 py-3 rounded-full border border-[#2A3F55] text-[#E7EDF3] text-[14px] font-medium hover:border-[#3D5570] transition-colors"
               >
@@ -322,12 +330,12 @@ export default function Home() {
           <p className="text-[22px] font-bold text-[#0B1B2B]" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
             Ready to stop matching statements by hand?
           </p>
-          <a
-            href="/login/admin"
+          <Link
+            to="/login/admin"
             className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-[#0B1B2B] text-white text-[14px] font-semibold whitespace-nowrap"
           >
             Get started <ArrowRight size={16} />
-          </a>
+          </Link>
         </div>
       </section>
 
@@ -348,9 +356,9 @@ export default function Home() {
                 Portals
               </p>
               <div className="flex flex-col gap-2 text-[14px] text-[#B7C4D1]">
-                <a href="/login/admin">Admin</a>
-                <a href="/login/bursar">Bursar</a>
-                <a href="/login/parent">Parent</a>
+                <Link to="/login/admin">Admin</Link>
+                <Link to="/login/bursar">Bursar</Link>
+                <Link to="/login/parent">Parent</Link>
               </div>
             </div>
             <div>
