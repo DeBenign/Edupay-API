@@ -1,5 +1,6 @@
 // src/models/Student.js
 const mongoose = require('mongoose');
+const { generateLinkCode, linkCodeExpiry } = require('../utils/linkCode');
 
 const virtualAccountSchema = new mongoose.Schema({
   accountNumber:   { type: String, default: null },
@@ -17,6 +18,8 @@ const studentSchema = new mongoose.Schema({
   parentId:       { type: mongoose.Schema.Types.ObjectId, ref: 'User',   default: null },
   fullName:       { type: String, required: true, trim: true },
   studentId:      { type: String, required: true, trim: true },
+  linkCode:          { type: String, unique: true, sparse: true },
+  linkCodeExpiresAt: { type: Date, default: null },
   class:          { type: String, required: true, trim: true },
   gender:         { type: String, enum: ['male','female'], required: true },
   dateOfBirth:    { type: Date,   default: null },
@@ -26,6 +29,13 @@ const studentSchema = new mongoose.Schema({
   },
   isActive:       { type: Boolean, default: true },
 }, { timestamps: true });
+
+studentSchema.pre('validate', function () {
+  if (this.isNew && !this.linkCode) {
+    this.linkCode = generateLinkCode();
+    this.linkCodeExpiresAt = linkCodeExpiry();
+  }
+});
 
 studentSchema.index({ schoolId: 1, studentId: 1 }, { unique: true });
 studentSchema.index({ 'virtualAccounts.nomba.accountNumber': 1 });

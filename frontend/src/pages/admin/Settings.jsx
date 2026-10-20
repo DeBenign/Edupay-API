@@ -20,8 +20,19 @@ export default function AdminSettings() {
   const [pwForm,   setPwForm]   = useState({ currentPassword: '', newPassword: '', confirmPassword: '' })
   const [pwErr,    setPwErr]    = useState('')
   const [pwSaving, setPwSaving] = useState(false)
+  const [studentCount, setStudentCount] = useState('')
 
-  const loadSub = () => subscriptionAPI.mine().then(r => setSub(r.data.data.subscription)).catch(() => {})
+  const loadSub = () => subscriptionAPI.mine().then(r => {
+  setSub(r.data.data.subscription)
+  setStudentCount(String(r.data.data.subscription.declaredStudents || ''))
+}).catch(() => {})
+
+const saveStudentCount = async () => {
+  try {
+    const res = await subscriptionAPI.setStudents({ declaredStudents: Number(studentCount) })
+    setSub(res.data.data.subscription); toast('Student count saved')
+  } catch (er) { toast(er.response?.data?.message || 'Could not save', 'error') }
+}
 
   useEffect(() => {
     schoolAPI.getmine()
@@ -66,6 +77,15 @@ export default function AdminSettings() {
       setPwErr(er.response?.data?.message || 'Failed to change password')
     } finally { setPwSaving(false) }
   }
+
+  const toggleDiscount = async (e) => {
+  const next = e.target.checked
+  try {
+    await schoolAPI.update(school._id, { earlyPaymentDiscountEnabled: next })
+    setSchool(s => ({ ...s, earlyPaymentDiscountEnabled: next }))
+    toast(next ? 'Early-payment discount is on' : 'Early-payment discount is off')
+  } catch (er) { toast(er.response?.data?.message || 'Could not update', 'error') }
+}
 
   const copy = (text) => { navigator.clipboard.writeText(text); toast('Copied') }
   const set   = (k) => (e) => setForm(p => ({ ...p, [k]: e.target.value }))
@@ -128,6 +148,21 @@ export default function AdminSettings() {
         </form>
       </div>
 
+      {school && (
+        <div className="card p-6 space-y-3">
+          <h2 className="font-semibold text-gray-900">Early-payment discount</h2>
+          <p className="text-sm text-gray-500">
+            Offer parents 10% off when their first payment on a term fee covers at least 90% of it and is made on or before the due date.
+            Your school absorbs the difference. Off by default.
+          </p>
+          <label className="flex items-center gap-3 text-sm">
+            <input type="checkbox" checked={!!school.earlyPaymentDiscountEnabled} onChange={toggleDiscount} />
+            {school.earlyPaymentDiscountEnabled ? 'On' : 'Off'}
+          </label>
+        </div>
+      )}
+
+
       {/* Referral codes */}
       {school && (
         <div className="card p-6 space-y-4">
@@ -156,18 +191,31 @@ export default function AdminSettings() {
       )}
 
       {/* Subscription */}
-      {sub && (
-        <div className="card p-6">
-          <h2 className="font-semibold text-gray-900 mb-2">Subscription</h2>
-          <p className="text-sm text-gray-600">
-            {sub.status === 'pilot'  && `Free pilot until ${formatDate(sub.activeUntil)}.`}
-            {sub.status === 'active' && `Paid until ${formatDate(sub.activeUntil)}.`}
-            {sub.status === 'due'    && 'Your subscription is overdue.'}
-          </p>
-          <p className="text-xs text-gray-400 mt-1">{formatCurrency(sub.pricePerTerm)} per term. Contact EduPay to pay.</p>
+     {sub && (
+      <div className="card p-6 space-y-3">
+        <h2 className="font-semibold text-gray-900">Subscription</h2>
+        <p className="text-sm text-gray-600">
+          {sub.status === 'pilot'  && `Free pilot until ${formatDate(sub.activeUntil)}.`}
+          {sub.status === 'active' && `Paid until ${formatDate(sub.activeUntil)}.`}
+          {sub.status === 'due'    && 'Your subscription is overdue.'}
+        </p>
+        <div className="bg-gray-50 rounded-lg p-3 text-sm space-y-1">
+          <div className="flex justify-between"><span className="text-gray-500">Students you declared</span><span>{sub.declaredStudents}</span></div>
+          <div className="flex justify-between"><span className="text-gray-500">Students enrolled</span><span>{sub.enrolledStudents}</span></div>
+          <div className="flex justify-between"><span className="text-gray-500">Billed for (the higher)</span><span>{sub.billableStudents}</span></div>
+          <div className="flex justify-between font-semibold"><span>Per term</span><span>{formatCurrency(sub.amountDue)}</span></div>
+          <p className="text-xs text-gray-400">{sub.billableStudents} × {formatCurrency(sub.ratePerStudent)}, minimum {formatCurrency(sub.minimum)}</p>
         </div>
-      )}
-
+        <div className="flex gap-2">
+          <input type="number" min="0" className="input flex-1" placeholder="Total students in your school"
+            value={studentCount} onChange={e => setStudentCount(e.target.value)} />
+          <button className="btn-secondary" onClick={saveStudentCount}>Save</button>
+        </div>
+        <p className="text-xs text-gray-500">
+          Pay to {sub.payTo.bank} {sub.payTo.accountNumber} ({sub.payTo.accountName}). Use your school name as the reference.
+        </p>
+      </div>
+    )}
       {/* Change password */}
       <div className="card p-6">
         <div className="flex items-center gap-3 mb-5">

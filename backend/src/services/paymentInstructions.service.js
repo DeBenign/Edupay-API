@@ -1,7 +1,7 @@
 // src/services/paymentInstructions.service.js
 const FeeAssignment = require('../models/FeeAssignment');
 const { computeAmountToCollect, isFeeWaived } = require('./platformFee.service');
-const { getEarlyPaymentOffer } = require('./earlyPaymentDiscount.service');
+const { getEarlyPaymentOffer, isDiscountEnabled } = require('./earlyPaymentDiscount.service');
 
 const plain = (sub) => (sub?.toObject ? sub.toObject() : sub);
 
@@ -17,7 +17,7 @@ const buildPaymentInstructions = async (student) => {
     FeeAssignment.find({ studentId: student._id, status: { $in: ['unpaid', 'partial'] } })
       .populate('feeStructureId', 'name term academicSession dueDate studentOnly')
       .sort({ createdAt: 1 }),
-    isFeeWaived(student.schoolId),
+    isFeeWaived(student.schoolId), isDiscountEnabled(student.schoolId)
   ]);
 
   const outstandingFees = assignments.map((a) => {
@@ -27,7 +27,7 @@ const buildPaymentInstructions = async (student) => {
     });
 
     let earlyPayment = null;
-    const offer = getEarlyPaymentOffer(a);
+    const offer = getEarlyPaymentOffer(a, { enabled: discountOn });
     if (offer) {
       const early = {};
       paymentOptions.forEach(({ gateway }) => {

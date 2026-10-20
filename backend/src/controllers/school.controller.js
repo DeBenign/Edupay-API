@@ -67,7 +67,10 @@ const updateSchool = async (req, res) => {
       school.payoutBank = { accountNumber: String(accountNumber), bankCode: String(bankCode), accountName: accountName.trim() };
     }
 
-    const allowed = ['name','address','email','phone','logoUrl'];
+    if (req.body.earlyPaymentDiscountEnabled !== undefined && typeof req.body.earlyPaymentDiscountEnabled !== 'boolean')
+      return badRequest(res, 'earlyPaymentDiscountEnabled must be true or false');
+
+    const allowed = ['name','address','email','phone','logoUrl', 'earlyPaymentDiscountEnabled'];
     allowed.forEach(f => { if (req.body[f] !== undefined) school[f] = req.body[f]; });
     await school.save();
     return success(res, { school }, 'School updated successfully');

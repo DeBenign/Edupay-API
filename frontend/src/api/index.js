@@ -27,6 +27,7 @@ export const studentAPI = {
   getAccount:     (id)     => api.get(`/students/${id}/account`),
   retryProvision: (id)     => api.post(`/students/${id}/provision-account`),
   promoteClass: (data) => api.post('/students/promote-class', data),
+  newLinkCode: (id, data) => api.post(`/students/${id}/link-code`, data),
 
 }
 
@@ -115,4 +116,5 @@ export const subscriptionAPI = {
   mine:    ()               => api.get('/subscriptions/mine'),
   schools: ()               => api.get('/subscriptions/schools'),
   record:  (schoolId, data) => api.post(`/subscriptions/schools/${schoolId}/payments`, data),
+  setStudents: (data) => api.patch('/subscriptions/declared-students', data),
 }

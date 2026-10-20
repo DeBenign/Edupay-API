@@ -13,8 +13,8 @@ export default function ParentChildren() {
   const { toasts, toast, remove } = useToast()
   const [children,   setChildren]   = useState([])
   const [loading,    setLoading]    = useState(true)
-  const [showLink,   setShowLink]   = useState(false)
-  const [linking,    setLinking]    = useState(false)
+  const [showLink,   setShowLink]   = useState({ code: '' })
+  const [linking,    setLinking]    = useState({ code: '' })
   const [unlinking,  setUnlinking]  = useState(null)
   const [linkErr,    setLinkErr]    = useState('')
   const [linkForm,   setLinkForm]   = useState({ studentId: '', schoolId: '' })
@@ -161,15 +161,11 @@ export default function ParentChildren() {
         {linkErr && <div className="mb-4"><Alert type="error" message={linkErr} /></div>}
         <form onSubmit={handleLink} className="space-y-4">
           <div className="bg-blue-50 border border-blue-100 rounded-lg p-3 text-xs text-blue-700">
-            💡 Ask your school admin for your child's school-issued Student ID (e.g. GF/2024/001) and the School ID.
+            💡 Ask the school for your child's link code (for example K7M2-9QXP). Each code works once.
           </div>
-          <Field label="School-Issued Student ID" required>
-            <input className="input" placeholder="GF/2024/001" required
-              value={linkForm.studentId} onChange={e => setLinkForm(p => ({...p, studentId: e.target.value}))} />
-          </Field>
-          <Field label="School ID" required>
-            <input className="input" placeholder="Paste the MongoDB school ID from admin" required
-              value={linkForm.schoolId} onChange={e => setLinkForm(p => ({...p, schoolId: e.target.value}))} />
+          <Field label="Link code" required>
+            <input className="input font-mono uppercase" placeholder="K7M2-9QXP" required maxLength={9}
+              value={linkForm.code} onChange={e => setLinkForm({ code: e.target.value })} />
           </Field>
           <div className="flex gap-3 justify-end">
             <button type="button" onClick={() => setShowLink(false)} className="btn-secondary">Cancel</button>

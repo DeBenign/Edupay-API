@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const Payment       = require('../models/Payment');
 const FeeAssignment = require('../models/FeeAssignment');
 const Student       = require('../models/Student');
+const School = require('../models/School');
 const { emitReconciliationEvent } = require('../sockets/reconciliation.socket');
 const { createPaymentNotifications } = require('./notification.service');
 const { resolvePlatformFee } = require('./platformFee.service');
@@ -110,8 +111,11 @@ const processPayment = async ({
   const totalNowPaid = feeAssignment.totalPaid + netAmountForSchool;
 
   // 4a. Early full-payment discount (checked against what the school actually nets)
-  const discount = checkEarlyPaymentDiscount(feeAssignment, netAmountForSchool);
-
+  const schoolFlags = await School.findById(student.schoolId).select('earlyPaymentDiscountEnabled').lean();
+  const discount = checkEarlyPaymentDiscount(feeAssignment, netAmountForSchool, {
+    enabled: schoolFlags?.earlyPaymentDiscountEnabled === true,
+  });
+  
   let status, reconciliationStatus, balance, overpayment;
   if (discount.qualifies) {
     status = 'paid'; reconciliationStatus = 'exact'; balance = 0; overpayment = 0;

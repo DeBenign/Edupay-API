@@ -3,6 +3,7 @@ const Student       = require('../models/Student');
 const FeeAssignment = require('../models/FeeAssignment');
 const Payment       = require('../models/Payment');
 const User          = require('../models/User');
+const { normalizeLinkCode } = require('../utils/linkCode');
 const { buildPaymentInstructions } = require('../services/paymentInstructions.service');
 const { paginate }  = require('../utils/paginate');
 const { success, badRequest, notFound, error, forbidden, paginated } = require('../utils/apiResponse');
@@ -120,17 +121,22 @@ const getChildPaymentHistory = async (req, res) => {
 
 const linkChild = async (req, res) => {
   try {
-    const { studentId, schoolId } = req.body;
-    if (!studentId || !schoolId) return badRequest(res, 'studentId and schoolId are required');
-    const student = await Student.findOne({ studentId, schoolId, isActive: true });
-    if (!student) return notFound(res, 'Student not found. Check the student ID and school.');
-    if (student.parentId && student.parentId.toString() !== req.user._id.toString()) return forbidden(res, 'This student is already linked to another parent. Contact the school.');
-    if (student.parentId?.toString() === req.user._id.toString()) return success(res, { student }, `${student.fullName} is already linked to your account`);
+    const code = normalizeLinkCode(req.body.code);
+    if (code.length !== 8) return badRequest(res, 'Enter the 8-character code from the school');
+
+    const student = await Student.findOne({ linkCode: code, isActive: true });
+    if (!student || !student.linkCodeExpiresAt || student.linkCodeExpiresAt < new Date())
+      return badRequest(res, 'That code is invalid or has expired. Ask the school for a new one.');
+    if (student.parentId && student.parentId.toString() !== req.user._id.toString())
+      return forbidden(res, 'This student is already linked to another parent. Contact the school.');
+
     student.parentId = req.user._id;
-    await student.save();
+    student.linkCode = undefined;          // one-time: stops working once used
+    student.linkCodeExpiresAt = null;
+    await student.save();    
     if (!req.user.schoolId) await User.findByIdAndUpdate(req.user._id, { schoolId: student.schoolId });
     return success(res, { student: { fullName: student.fullName, studentId: student.studentId, class: student.class, accountNumber: student.virtualAccounts?.nomba?.accountNumber || student.virtualAccounts?.paystack?.accountNumber || null,
-bankName:student.virtualAccounts?.nomba?.bankName|| student.virtualAccounts?.paystack?.bankName||null, } }, `${student.fullName} successfully linked to your account`);
+    bankName:student.virtualAccounts?.nomba?.bankName|| student.virtualAccounts?.paystack?.bankName||null, } }, `${student.fullName} successfully linked to your account`);
   } catch (err) { return error(res); }
 };
 

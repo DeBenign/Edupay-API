@@ -14,6 +14,8 @@ const schoolSchema = new mongoose.Schema({
   // Which gateway new students at this school get provisioned on.
   // null = fall back to the global DEFAULT_PAYMENT_GATEWAY env var.
   paymentGateway: { type: String, enum: ['nomba', 'paystack', null], default: null },
+  earlyPaymentDiscountEnabled: { type: Boolean, default: false },
+  declaredStudents: { type: Number, default: 0, min: 0 },
 
   // ── Referrals ──────────────────────────────────────────────────────────
   // This school's own code, given out to refer OTHER schools.

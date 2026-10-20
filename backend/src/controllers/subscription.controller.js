@@ -5,29 +5,64 @@ const { success, created, badRequest, notFound, error } = require('../utils/apiR
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const TERM_DAYS = 120;
-const PRICE = Number(process.env.SUBSCRIPTION_PRICE_PER_TERM) || 50000;
+const RATE    = Number(process.env.SUBSCRIPTION_PER_STUDENT) || 300;
+const MINIMUM = Number(process.env.SUBSCRIPTION_MINIMUM) || 30000;
+const PAY_TO = {
+  bank:          process.env.SUBSCRIPTION_BANK_NAME      || 'GTBank',
+  accountNumber: process.env.SUBSCRIPTION_ACCOUNT_NUMBER || '0222565760',
+  accountName:   process.env.SUBSCRIPTION_ACCOUNT_NAME   || 'Yusuf Ibrahim',
+};
 
-const statusOf = (school) => {
+// Per term: students × rate, never below the minimum.
+// Students = the higher of the declared count and the enrolled count.
+const priceFor = (declared, enrolled) => {
+  const billableStudents = Math.max(declared || 0, enrolled || 0);
+  return { billableStudents, ratePerStudent: RATE, minimum: MINIMUM, amountDue: Math.max(MINIMUM, billableStudents * RATE) };
+};
+
+const statusOf = (school, enrolled) => {
   const now = Date.now();
   const pilotEnds = school.subscription?.pilotEndsAt
     ? new Date(school.subscription.pilotEndsAt).getTime()
-    : new Date(school.createdAt).getTime() + TERM_DAYS * DAY_MS; // schools created before this feature
+    : new Date(school.createdAt).getTime() + TERM_DAYS * DAY_MS;
   const paidUntil = school.subscription?.paidUntil ? new Date(school.subscription.paidUntil).getTime() : 0;
   const activeUntil = Math.max(pilotEnds, paidUntil);
   const status = now > activeUntil ? 'due' : paidUntil >= now ? 'active' : 'pilot';
-  return { status, activeUntil: new Date(activeUntil), daysLeft: Math.ceil((activeUntil - now) / DAY_MS), pricePerTerm: PRICE };
+  const declaredStudents = school.subscription?.declaredStudents || 0;
+  const price = priceFor(declaredStudents, enrolled);
+  return {
+    status, activeUntil: new Date(activeUntil), daysLeft: Math.ceil((activeUntil - now) / DAY_MS),
+    declaredStudents, enrolledStudents: enrolled, ...price, pricePerTerm: price.amountDue, payTo: PAY_TO,
+  };
 };
 
-// Admin or bursar: their own school's status (drives the banner)
+const countEnrolled = (schoolId) => Student.countDocuments({ schoolId, isActive: true });
+
 const mySubscription = async (req, res) => {
   try {
     if (!req.user.schoolId) return notFound(res, 'No school');
-    const school = await School.findById(req.user.schoolId).select('subscription createdAt');
-    return success(res, { subscription: statusOf(school) });
+    const [school, enrolled] = await Promise.all([
+      School.findById(req.user.schoolId).select('subscription createdAt'), countEnrolled(req.user.schoolId),
+    ]);
+    return success(res, { subscription: statusOf(school, enrolled) });
   } catch { return error(res); }
 };
 
-// Platform admin: every school, its status, and its student count
+// Admin: tell EduPay how many students the school has
+const setDeclaredStudents = async (req, res) => {
+  try {
+    const n = Number(req.body.declaredStudents);
+    if (!Number.isInteger(n) || n < 0 || n > 100000) return badRequest(res, 'declaredStudents must be a whole number');
+    if (!req.user.schoolId) return notFound(res, 'No school');
+    await School.updateOne({ _id: req.user.schoolId }, { $set: { 'subscription.declaredStudents': n } });
+    const [school, enrolled] = await Promise.all([
+      School.findById(req.user.schoolId).select('subscription createdAt'), countEnrolled(req.user.schoolId),
+    ]);
+    return success(res, { subscription: statusOf(school, enrolled) }, 'Student count saved');
+  } catch (err) { return error(res, err.message); }
+};
+
+// Platform admin: every school with its status and what it owes
 const listSubscriptions = async (req, res) => {
   try {
     const [schools, counts] = await Promise.all([
@@ -36,15 +71,15 @@ const listSubscriptions = async (req, res) => {
     ]);
     const byId = new Map(counts.map((c) => [String(c._id), c.n]));
     return success(res, {
-      schools: schools.map((s) => ({
-        schoolId: s._id, name: s.name, email: s.email, phone: s.phone,
-        activeStudents: byId.get(String(s._id)) || 0, ...statusOf(s),
-      })),
+      schools: schools.map((s) => {
+        const enrolled = byId.get(String(s._id)) || 0;
+        return { schoolId: s._id, name: s.name, email: s.email, phone: s.phone, activeStudents: enrolled, ...statusOf(s, enrolled) };
+      }),
     });
   } catch (err) { return error(res, err.message); }
 };
 
-// Platform admin: record a payment you received from a school
+// Platform admin: record a payment received from a school
 const recordPayment = async (req, res) => {
   try {
     const amount = Number(req.body.amount);
@@ -55,21 +90,22 @@ const recordPayment = async (req, res) => {
     const school = await School.findById(req.params.schoolId);
     if (!school) return notFound(res, 'School not found');
 
-    // Paying early extends from the end of the current cover, never overlaps it
-    const start = Math.max(Date.now(), statusOf(school).activeUntil.getTime());
+    const snapshot = statusOf(school, await countEnrolled(school._id));
+    const start = Math.max(Date.now(), snapshot.activeUntil.getTime()); // paying early extends, never overlaps
     const coversUntil = new Date(start + terms * TERM_DAYS * DAY_MS);
 
     const payment = await SubscriptionPayment.create({
       schoolId: school._id, amount, terms, reference, coversUntil, note: req.body.note, recordedBy: req.user._id,
+      studentsBilled: snapshot.billableStudents, ratePerStudent: RATE,
     });
-    school.subscription = { ...(school.subscription?.toObject?.() || {}), paidUntil: coversUntil };
-    await school.save();
+    await School.updateOne({ _id: school._id }, { $set: { 'subscription.paidUntil': coversUntil } });
 
-    return created(res, { payment, subscription: statusOf(school) }, 'Subscription payment recorded');
+    const fresh = await School.findById(school._id).select('subscription createdAt');
+    return created(res, { payment, subscription: statusOf(fresh, snapshot.enrolledStudents) }, 'Subscription payment recorded');
   } catch (err) {
     if (err.code === 11000) return badRequest(res, 'That reference was already recorded');
     return error(res, err.message);
   }
 };
 
-module.exports = { mySubscription, listSubscriptions, recordPayment };
+module.exports = { mySubscription, setDeclaredStudents, listSubscriptions, recordPayment };

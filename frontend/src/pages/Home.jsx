@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { ChevronDown, Menu, X, ArrowRight, ShieldCheck, Zap, Users, Percent, Gift, Wallet } from "lucide-react";
+import { Link } from 'react-router-dom'
 
 // ─── Design tokens ───────────────────────────────────────────────
 // Ink        #0B1B2B  (dark sections, header, text)
@@ -87,6 +88,7 @@ function LoginMenu({ mobile = false }) {
     { label: "Parent", href: "/login/parent" },
   ];
 
+  
   if (mobile) {
     return (
       <div className="flex flex-col gap-2 mt-2">

@@ -87,7 +87,7 @@ const runPromote = async (preview) => {
 }
 
 const setF = (k) => (e) => setFeeForm(p => ({ ...p, [k]: e.target.value }))
-
+const fmtCode = (c) => (c ? c.replace(/[^A-Z0-9]/gi, '').replace(/^(.{4})(.{4})$/, '$1-$2') : '')
 const openFee = (s) => { setFeeModal(s); setFeeForm(INITIAL_FEE); setFeeErr('') }
 
 const submitFee = async (e) => {
@@ -125,17 +125,26 @@ const submitFee = async (e) => {
       const res = await studentAPI.enroll(form)
       const student = res.data.data.student
       const warning = res.data.data.warning
-      toast(warning ? `${student.fullName} enrolled. Virtual account pending.` : `${student.fullName} enrolled successfully!`)
+      toast(warning ? `${student.fullName} enrolled. Virtual account pending.` : `${student.fullName} enrolled successfully!` , `Parent code: ${fmtCode(student.linkCode)}`)
       setShowEnroll(false); setForm(INITIAL_FORM); load()
     } catch (err) {
       setEnrollErr(err.response?.data?.message || 'Enrollment failed')
     } finally { setEnrolling(false) }
   }
 
+  const newLinkCode = async (id, hasParent) => {
+  if (hasParent && !window.confirm('This unlinks the current parent and issues a new code. Continue?')) return
+  try {
+    const res = await studentAPI.newLinkCode(id, { replaceParent: hasParent })
+    setAccountModal(m => ({ ...m, linkCode: res.data.data.linkCode, hasParent: false }))
+    toast('New link code issued'); load()
+  } catch (err) { toast(err.response?.data?.message || 'Could not issue a code', 'error') }
+}
+
   const showAccount = async (student) => {
     try {
       const res = await studentAPI.getAccount(student._id)
-      setAccountModal({ ...res.data.data, studentName: student.fullName, studentId: student.studentId, _id: student._id })
+      setAccountModal({ ...res.data.data, studentName: student.fullName, studentId: student.studentId, _id: student._id, linkCode: student.linkCode, hasParent: !!student.parentId })
     } catch {
       toast('Could not load account details', 'error')
     }
@@ -288,6 +297,18 @@ const retryProvision = async (studentId) => {
       </Modal>
 
      {/* Account Modal */}
+     <div className="bg-gray-50 rounded-lg p-3 text-sm space-y-2">
+        <p className="text-xs text-gray-500">Parent link code</p>
+        {accountModal.linkCode
+          ? <div className="flex items-center justify-between">
+              <span className="font-mono font-bold text-lg">{fmtCode(accountModal.linkCode)}</span>
+              <button className="btn-secondary text-xs" onClick={() => copy(fmtCode(accountModal.linkCode))}>Copy</button>
+            </div>
+          : <p className="text-gray-500">{accountModal.hasParent ? 'Linked to a parent.' : 'No active code.'}</p>}
+        <button className="text-xs text-blue-600 hover:underline" onClick={() => newLinkCode(accountModal._id, accountModal.hasParent)}>
+          {accountModal.hasParent ? 'Unlink parent and issue new code' : 'Issue a new code'}
+        </button>
+      </div>
       <Modal open={!!accountModal} onClose={() => setAccountModal(null)} title="Virtual Account Details">
         {accountModal && (
           <div className="space-y-4">

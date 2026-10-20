@@ -7,6 +7,7 @@ const { provisionStudentVirtualAccount, retryVirtualAccountProvisioning } = requ
 const { paginate }  = require('../utils/paginate');
 
 const { success, created, badRequest, notFound, error, forbidden, paginated } = require('../utils/apiResponse');
+const { generateLinkCode, linkCodeExpiry, formatLinkCode } = require('../utils/linkCode');
 
 
 const enrollStudent = async (req, res) => {
@@ -94,6 +95,7 @@ const getStudent = async (req, res) => {
       return forbidden(res, 'Access denied');
     if (req.user.role !== 'parent' && student.schoolId?._id?.toString() !== req.user.schoolId?.toString())
       return forbidden(res, 'Access denied');
+    if (req.user.role === 'parent') student.set({ linkCode: undefined, linkCodeExpiresAt: undefined });
     const feeAssignments = await FeeAssignment.find({ studentId: student._id })
       .populate('feeStructureId','name term academicSession amount dueDate').sort({ createdAt: -1 });
     return success(res, { student, feeAssignments });
@@ -230,4 +232,21 @@ const promoteClass = async (req, res) => {
       graduate ? `${ids.length} student(s) graduated` : `${ids.length} student(s) promoted to ${finalClass}`);
   } catch (err) { return error(res, err.message); }
 };
-module.exports = { enrollStudent, getStudents, getStudent, updateStudent, deactivateStudent, retryAccountProvisioning, getStudentAccount, promoteClass };
+
+const regenerateLinkCode = async (req, res) => {
+  try {
+    const student = await Student.findById(req.params.id);
+    if (!student) return notFound(res, 'Student not found');
+    if (student.schoolId.toString() !== req.user.schoolId?.toString()) return forbidden(res, 'Access denied');
+    if (student.parentId && !req.body.replaceParent)
+      return badRequest(res, 'This student is already linked to a parent. Send replaceParent: true to unlink them and issue a new code.');
+
+    student.parentId = null;
+    student.linkCode = generateLinkCode();
+    student.linkCodeExpiresAt = linkCodeExpiry();
+    await student.save();
+    return success(res, { linkCode: formatLinkCode(student.linkCode), expiresAt: student.linkCodeExpiresAt }, 'New link code issued');
+  } catch (err) { return error(res, err.code === 11000 ? 'Please try again' : err.message); }
+};
+
+module.exports = { enrollStudent, getStudents, getStudent, updateStudent, deactivateStudent, retryAccountProvisioning, getStudentAccount, promoteClass, regenerateLinkCode };

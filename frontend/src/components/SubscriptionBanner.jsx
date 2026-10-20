@@ -19,7 +19,8 @@ export default function SubscriptionBanner() {
       {due
         ? 'Your EduPay subscription is overdue.'
         : `Your ${sub.status === 'pilot' ? 'pilot' : 'subscription'} ends in ${sub.daysLeft} day${sub.daysLeft === 1 ? '' : 's'} (${formatDate(sub.activeUntil)}).`}
-      {' '}The subscription is {formatCurrency(sub.pricePerTerm)} per term. Contact EduPay to pay.
+       {' '}Pay {formatCurrency(sub.pricePerTerm)} to {sub.payTo.bank} <strong>{sub.payTo.accountNumber}</strong> ({sub.payTo.accountName}).
+      {' '}Use your school name as the reference, then let EduPay know so it can be recorded.
     </div>
   )
 }

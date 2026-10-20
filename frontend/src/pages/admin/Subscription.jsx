@@ -16,7 +16,7 @@ export default function Subscriptions() {
   useEffect(() => { load() }, [load])
 
   const record = async (s) => {
-    const amount = window.prompt(`Amount received from ${s.name} (₦)`, String(s.pricePerTerm))
+    const amount = window.prompt(`Amount received from ${s.name} (₦)`, String(s.amountDue))
     if (!amount) return
     const reference = window.prompt('Bank transfer reference')
     if (!reference) return
@@ -36,13 +36,13 @@ export default function Subscriptions() {
           <div key={s.schoolId} className="flex items-center justify-between px-5 py-3 border-b border-gray-50 text-sm">
             <div>
               <p className="font-semibold text-gray-900">{s.name}</p>
-              <p className="text-xs text-gray-400">{s.activeStudents} students · {s.phone || s.email}</p>
+              <p className="text-xs text-gray-400">{s.declaredStudents} declared · {s.enrolledStudents} enrolled · bills {s.billableStudents} · {s.phone || s.email}</p>
             </div>
             <div className="flex items-center gap-4">
               <span className={s.status === 'due' ? 'text-red-600' : s.status === 'active' ? 'text-green-600' : 'text-amber-600'}>
                 {s.status} · until {formatDate(s.activeUntil)}
               </span>
-              <button className="text-xs text-blue-600 hover:underline" onClick={() => record(s)}>Record {formatCurrency(s.pricePerTerm)}</button>
+              <button className="text-xs text-blue-600 hover:underline" onClick={() => record(s)}>Record {formatCurrency(s.amountDue)}</button>
             </div>
           </div>
         ))}

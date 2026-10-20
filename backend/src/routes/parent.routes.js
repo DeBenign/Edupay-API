@@ -6,6 +6,13 @@ const {
 } = require('../controllers/parent.controller');
 const { protect }   = require('../middleware/auth.middleware');
 const { authorize } = require('../middleware/role.middleware');
+const rateLimit = require('express-rate-limit');
+const linkLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, max: 10, standardHeaders: true, legacyHeaders: false,
+  keyGenerator: (req) => String(req.user._id),
+  message: { success: false, message: 'Too many attempts. Try again in 15 minutes.' },
+});
+router.post('/link-child', linkLimiter, linkChild);
 
 router.use(protect, authorize('parent'));
 router.get('/dashboard',                       getDashboard);

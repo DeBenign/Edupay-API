@@ -12,18 +12,13 @@ export const AuthProvider = ({ children }) => {
 
   // Verify token on mount
   useEffect(() => {
-    const token = localStorage.getItem('edupay_token')
-    if (!token) { setLoading(false); return }
-
-    authAPI.me()
-      .then(res => { setUser(res.data.data.user); setLoading(false) })
-      .catch(() => {
-        localStorage.removeItem('edupay_token')
-        localStorage.removeItem('edupay_user')
-        setUser(null)
-        setLoading(false)
-      })
-  }, [])
+  const token = localStorage.getItem('token')
+  if (!token) { setLoading(false); return }
+  authAPI.me()
+    .then(res => setUser(res.data.data.user))
+    .catch(() => { localStorage.removeItem('token'); setUser(null) })
+    .finally(() => setLoading(false))
+}, [])
 
   const login = useCallback(async (email, password) => {
     const res  = await authAPI.login({ email, password })
