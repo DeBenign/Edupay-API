@@ -4,6 +4,8 @@ const User = require('../models/User');
 const { env } = require('../config/env');
 const { success, created, badRequest, unauthorized, notFound, error } = require('../utils/apiResponse');
 
+const { isPlatformAdminEmail } = require('../middleware/platformAdmin.middleware');
+
 const signToken = (id) => jwt.sign({ id }, env.jwt.secret, { expiresIn: env.jwt.expiresIn });
 
 const register = async (req, res) => {
@@ -33,7 +35,8 @@ const login = async (req, res) => {
     await user.save({ validateBeforeSave: false });
     const token = signToken(user._id);
     user.password = undefined;
-    return success(res, { user, token }, 'Login successful');
+    return success(res, { user: { ...user.toJSON(), isPlatformAdmin: isPlatformAdminEmail(user.email) }, token }, 'Login successful');
+
   } catch (err) {
     console.error('login error:', err.message);
     return error(res);
@@ -44,7 +47,7 @@ const getMe = async (req, res) => {
   try {
     const user = await User.findById(req.user._id).populate('schoolId', 'name email logoUrl');
     if (!user) return notFound(res, 'User not found');
-    return success(res, { user });
+    return success(res, { user: { ...user.toJSON(), isPlatformAdmin: isPlatformAdminEmail(user.email) } });
   } catch (err) { return error(res); }
 };
 
@@ -53,9 +56,11 @@ const changePassword = async (req, res) => {
     const { currentPassword, newPassword } = req.body;
     if (!currentPassword || !newPassword) return badRequest(res, 'currentPassword and newPassword are required');
     if (newPassword.length < 8) return badRequest(res, 'New password must be at least 8 characters');
+     if (newPassword === currentPassword) return badRequest(res, 'New password must be different from the current one');
     const user = await User.findById(req.user._id).select('+password');
     if (!await user.comparePassword(currentPassword)) return badRequest(res, 'Current password is incorrect');
     user.password = newPassword;
+     user.mustChangePassword = false;
     await user.save();
     return success(res, null, 'Password changed successfully');
   } catch (err) { return error(res); }

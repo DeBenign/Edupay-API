@@ -1,11 +1,12 @@
 // src/pages/admin/Students.jsx
 import { useState, useEffect, useCallback } from 'react'
+import BulkEnrollModal from '../../components/BulkEnrollModal'
 import { studentAPI, feeAPI } from '../../api'
 import { StatusBadge, Table, Pagination, EmptyState, Modal, Spinner, Alert, Field, StatCard } from '../../components/ui'
 import { formatDate, formatCurrency } from '../../utils/formatters'
 import { useToast } from '../../hooks/useToast'
 import { Toast } from '../../components/ui'
-import { GraduationCap, Plus, Search, RefreshCw, Copy, Check, AlertCircle } from 'lucide-react'
+import { GraduationCap, Plus, Search, RefreshCw, Copy, Check, AlertCircle, Upload } from 'lucide-react'
 
 const INITIAL_FORM = { fullName: '', studentId: '', class: '', gender: 'male', dateOfBirth: '' }
 const INITIAL_PROMOTE = { fromClass: '', toClass: '', graduate: false, force: false }
@@ -20,6 +21,7 @@ export default function AdminStudents() {
   const [classFilter, setClass]      = useState('')
   const [page,        setPage]       = useState(1)
   const [showEnroll,  setShowEnroll] = useState(false)
+  const [showBulk,    setShowBulk]   = useState(false)
   const [form,        setForm]       = useState(INITIAL_FORM)
   const [enrolling,   setEnrolling]  = useState(false)
   const [enrollErr,   setEnrollErr]  = useState('')
@@ -174,6 +176,12 @@ const retryProvision = async (studentId) => {
 
   const set = (k) => (e) => setForm(p => ({ ...p, [k]: e.target.value }))
 
+  const handleBulkDone = (r) => {
+      setShowBulk(false)
+      toast(`${r.createdCount} student(s) enrolled${r.failedCount ? `, ${r.failedCount} skipped` : ''}. Virtual accounts are being created in the background.`)
+      setPage(1); load()
+  }
+
   return (
     <div className="space-y-5 animate-fade-in">
       <Toast toasts={toasts} remove={remove} />
@@ -185,6 +193,7 @@ const retryProvision = async (studentId) => {
         </div>
         <div className="flex gap-2">
           <button onClick={() => setPromoteOpen(true)} className="btn-secondary">Promote class</button>
+          <button onClick={() => setShowBulk(true)} className="btn-secondary"><Upload size={15} /> Import</button>
           <button onClick={() => setShowEnroll(true)} className="btn-primary"><Plus size={16} /> Enroll Student</button>
         </div>
       </div>
@@ -255,6 +264,9 @@ const retryProvision = async (studentId) => {
         </Table>
         <Pagination pagination={pagination} onChange={setPage} />
       </div>
+
+      <BulkEnrollModal open={showBulk} onClose={() => setShowBulk(false)} onDone={handleBulkDone} />
+
 
       {/* Enroll Modal */}
       <Modal open={showEnroll} onClose={() => { setShowEnroll(false); setEnrollErr('') }} title="Enroll New Student" size="md">

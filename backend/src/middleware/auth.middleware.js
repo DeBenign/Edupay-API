@@ -4,6 +4,8 @@ const User = require('../models/User');
 const { env } = require('../config/env');
 const { unauthorized } = require('../utils/apiResponse');
 
+const ALLOWED_WHILE_PENDING = new Set(['GET /api/auth/me', 'PATCH /api/auth/change-password']);
+
 const protect = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
@@ -20,6 +22,16 @@ const protect = async (req, res, next) => {
     }
     const user = await User.findById(decoded.id).select('-password');
     if (!user || !user.isActive) return unauthorized(res, 'User account not found or deactivated.');
+    if (user.mustChangePassword) {
+      const path = req.originalUrl.split('?')[0].replace(/\/+$/, '');
+      if (!ALLOWED_WHILE_PENDING.has(`${req.method} ${path}`)) {
+        return res.status(403).json({
+          success: false,
+          code: 'PASSWORD_CHANGE_REQUIRED',
+          message: 'You must change your temporary password before continuing.',
+        });
+      }
+    }
     req.user = user;
     next();
   } catch (err) {

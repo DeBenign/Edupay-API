@@ -13,11 +13,11 @@ export default function ParentChildren() {
   const { toasts, toast, remove } = useToast()
   const [children,   setChildren]   = useState([])
   const [loading,    setLoading]    = useState(true)
-  const [showLink,   setShowLink]   = useState({ code: '' })
-  const [linking,    setLinking]    = useState({ code: '' })
+  const [showLink,   setShowLink]   = useState(false)
+  const [linking,    setLinking]    = useState(false)
   const [unlinking,  setUnlinking]  = useState(null)
   const [linkErr,    setLinkErr]    = useState('')
-  const [linkForm,   setLinkForm]   = useState({ studentId: '', schoolId: '' })
+  const [linkForm,   setLinkForm]   = useState({ code: '' })
   const [copied,     setCopied]     = useState(null)
 
   const load = useCallback(async () => {
@@ -36,7 +36,7 @@ export default function ParentChildren() {
     try {
       const res = await parentAPI.linkChild(linkForm)
       toast(res.data.message || 'Child linked successfully!')
-      setShowLink(false); setLinkForm({ studentId: '', schoolId: '' }); load()
+      setShowLink(false); setLinkForm({ code: '' }); load()
     } catch (er) {
       setLinkErr(er.response?.data?.message || 'Failed to link child')
     } finally { setLinking(false) }

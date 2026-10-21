@@ -24,6 +24,13 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (res) => res,
   (err) => {
+    if (err.response?.status === 403 && err.response?.data?.code === 'PASSWORD_CHANGE_REQUIRED') {
+      try {
+        const u = JSON.parse(localStorage.getItem('edupay_user'))
+        localStorage.setItem('edupay_user', JSON.stringify({ ...u, mustChangePassword: true }))
+      } catch { /* ignore */ }
+      window.location.reload()
+   }
     if (err.response?.status === 401) {
       localStorage.removeItem('token')
       localStorage.removeItem('edupay_user')

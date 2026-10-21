@@ -38,6 +38,7 @@ app.get('/health', (req, res) => res.json({
 app.use('/api/webhooks', captureRawBody, verifyWebhookSignature, require('./routes/webhook.routes'));
 
 // ── Body parser ───────────────────────────────────────────────────────────────
+app.use('/api/students/bulk', express.json({ limit: '1mb' }));
 app.use(express.json({ limit: '10kb' }));
 app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 

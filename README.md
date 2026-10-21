@@ -39,7 +39,7 @@ Register as admin → create the school (optional referral code)
    → create the bursar and parent accounts (Staff)
    → declare how many students the school has (Settings), which sets the subscription price
    → create a fee structure per class / term / session → assign it to the class
-   → enroll students (online accounts are provisioned automatically when the gateways are available)
+   → enroll students one by one, or import a CSV / Excel list (online accounts are provisioned automatically when the gateways are available)
 ```
 
 ### 2. Money arrives: two paths into one engine
@@ -165,7 +165,8 @@ No service charge, no referral conversion, not withdrawable. Each needs a unique
 - **One-off fees** (uniform, excursion) added to a single student.
 - **Hardship adjustments:** an admin can reduce one student's fee. A written reason is required and kept as an audit note.
 - **Class promotion** with a preview first; graduating a class deactivates its students. Old fee records stay on each account.
-- **People:** an admin can see the bursars and parents of their own school (name, phone, email, status, and each parent's linked children), search them, deactivate or reactivate an account, and reset a bursar's password. A reset issues a one-time temporary password; the existing password can never be read. Bursars and parents of other schools are never visible, and password hashes, tokens and link codes are never returned. Deactivation and password resets are recorded in an audit log.
+- **Bulk import:** upload a `.csv` or `.xlsx` list of up to 500 students (columns `fullName, studentId, class, gender`, optional `dateOfBirth`; a template can be downloaded). A preview lists every problem row (missing field, bad gender or date, duplicate or already-enrolled Student ID) and saves nothing until the admin confirms; problem rows are skipped, the rest are imported in one step. Virtual accounts are then created in the background, one student at a time a few seconds apart so the gateways are not rate-limited; any that fail show the existing retry button.
+- **People:** an admin can see the bursars and parents of their own school (name, phone, email, status, and each parent's linked children), search them, deactivate or reactivate an account, and reset a bursar's password. A reset issues a one-time temporary password; the existing password can never be read. The bursar must replace it on next login: until they do, the API rejects every call except loading their profile and changing the password. Bursars and parents of other schools are never visible, and password hashes, tokens and link codes are never returned. Deactivation and password resets are recorded in an audit log.
 
 ---
 
@@ -181,7 +182,7 @@ backend/src/
 │                  Referral, ReferralReward, SubscriptionPayment, WebhookLog, AuditLog
 ├── controllers/   auth, school, student, fee, payment, webhook, report, notification, parent,
 │                  referral, revenue, withdrawal, subscription, schoolPeople
-├── services/      reconciliation, virtualAccount, paymentInstructions, platformFee,
+├── services/      reconciliation, bulkEnroll, virtualAccount, paymentInstructions, platformFee,
 │                  earlyPaymentDiscount, fee, revenue, withdrawal, referral, vtu,
 │                  nomba, paystack (+ mappers), transaction (hourly sync)
 ├── middleware/    auth, roles, platform admin, webhook signature verification
@@ -264,6 +265,7 @@ Sandbox accounts are simulated and cannot receive real money. Set `NODE_ENV=prod
 | `PAYSTACK_MOCK_MODE` | Development only: fakes Paystack accounts |
 | `WEBHOOK_SKIP_VERIFY` | Development only: skips signature checks. Ignored in production |
 | `VTPASS_BASE_URL`, `VTPASS_API_KEY`, `VTPASS_SECRET_KEY`, `VTPASS_PUBLIC_KEY` | Airtime and data rewards |
+| `BULK_PROVISION_DELAY_MS` | Optional: pause between students when virtual accounts are created after a bulk import (default 1500) |
 | `SUBSCRIPTION_PER_STUDENT`, `SUBSCRIPTION_MINIMUM` | Subscription rate per student per term (default ₦300) and the minimum per school per term (default ₦30,000) |
 | `REFERRAL_REWARD_AMOUNT`, `REFERRAL_UNLOCK_MARGIN`, `REFERRAL_MAX_REWARDS_PER_MONTH` | Optional referral tuning |
 
@@ -279,11 +281,11 @@ Follow **[TEST.md](./TEST.md)**. It walks through every role in order: setup, ma
 
 ## Roadmap
 
-**Built:** fee management, manual and online reconciliation, service charge, early discount, overpayment resolution, hardship adjustments, one-off fees, class promotion, referral rewards, revenue and withdrawals, subscription billing.
+**Built:** bulk student import, forced password change after an admin reset, fee management, manual and online reconciliation, service charge, early discount, overpayment resolution, hardship adjustments, one-off fees, class promotion, referral rewards, revenue and withdrawals, subscription billing.
 
 **Verifying end to end:** live Nomba payments and webhooks; Paystack dedicated accounts, pending Paystack's activation.
 
-**Next:** bulk student enrollment by CSV or Excel upload (with a preview before anything is saved), advance notice of subscription price increases by email and on the dashboard, forcing a password change after an admin reset, a Paystack path in the per-student sync, payout webhooks to confirm withdrawals and refunds, per-gateway withdrawable balances, a per-school switch for the early discount, school-issued codes for linking children, and confirming each payment with the gateway before crediting.
+**Next:** advance notice of subscription price increases by email and on the dashboard, a Paystack path in the per-student sync, payout webhooks to confirm withdrawals and refunds, per-gateway withdrawable balances, a per-school switch for the early discount, school-issued codes for linking children, and confirming each payment with the gateway before crediting.
 
 ---
 

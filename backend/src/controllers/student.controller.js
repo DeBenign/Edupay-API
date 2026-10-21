@@ -8,6 +8,7 @@ const { paginate }  = require('../utils/paginate');
 
 const { success, created, badRequest, notFound, error, forbidden, paginated } = require('../utils/apiResponse');
 const { generateLinkCode, linkCodeExpiry, formatLinkCode } = require('../utils/linkCode');
+const { MAX_ROWS, previewBulk, commitBulk } = require('../services/bulkEnroll.service');
 
 
 const enrollStudent = async (req, res) => {
@@ -33,6 +34,24 @@ const enrollStudent = async (req, res) => {
       accountWarning ? 'Student enrolled (virtual account pending)' : 'Student enrolled successfully');
   } catch (err) {
     console.error('enrollStudent error:', err.message);
+    return error(res, err.message);
+  }
+};
+
+ const bulkEnrollStudents = async (req, res) => {
+  try {
+    const schoolId = req.user.schoolId;
+    if (!schoolId) return badRequest(res, 'Admin must belong to a school first');
+    const { rows, preview = false } = req.body || {};
+    if (!Array.isArray(rows) || !rows.length) return badRequest(res, 'rows must be a non-empty array');
+    if (rows.length > MAX_ROWS) return badRequest(res, `Upload at most ${MAX_ROWS} students at a time`);
+
+    if (preview) return success(res, await previewBulk(schoolId, rows), 'Preview ready');
+    const result = await commitBulk(schoolId, rows);
+    if (!result.createdCount) return badRequest(res, 'Nothing to import: every row has a problem', result.failed);
+    return created(res, result, `${result.createdCount} student(s) enrolled. Virtual accounts are being created in the background.`);
+  } catch (err) {
+    console.error('bulkEnrollStudents error:', err.message);
     return error(res, err.message);
   }
 };
@@ -249,4 +268,4 @@ const regenerateLinkCode = async (req, res) => {
   } catch (err) { return error(res, err.code === 11000 ? 'Please try again' : err.message); }
 };
 
-module.exports = { enrollStudent, getStudents, getStudent, updateStudent, deactivateStudent, retryAccountProvisioning, getStudentAccount, promoteClass, regenerateLinkCode };
+module.exports = { enrollStudent, getStudents, getStudent, updateStudent, deactivateStudent, retryAccountProvisioning, getStudentAccount, promoteClass, regenerateLinkCode, bulkEnrollStudents };

@@ -11,6 +11,7 @@ const userSchema = new mongoose.Schema({
   schoolId:    { type: mongoose.Schema.Types.ObjectId, ref: 'School', default: null },
   phone:       { type: String, trim: true },
   isActive:    { type: Boolean, default: true },
+  mustChangePassword: { type: Boolean, default: false },
   lastLoginAt: { type: Date, default: null },
   // Personal code, shared to refer a NEW school. The reward is claimed from the user's own dashboard.
   referralCode: { type: String, unique: true, sparse: true, uppercase: true },

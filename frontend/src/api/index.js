@@ -28,6 +28,7 @@ export const studentAPI = {
   retryProvision: (id)     => api.post(`/students/${id}/provision-account`),
   promoteClass: (data) => api.post('/students/promote-class', data),
   newLinkCode: (id, data) => api.post(`/students/${id}/link-code`, data),
+  bulkEnroll: (data) => api.post('/students/bulk', data),
 
 }
 

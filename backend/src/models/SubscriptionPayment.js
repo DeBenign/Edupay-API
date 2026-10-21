@@ -5,6 +5,7 @@ const schema = new mongoose.Schema({
   terms:       { type: Number, default: 1, min: 1 },
   studentsBilled:  { type: Number, default: 0 },
   ratePerStudent:  { type: Number, default: 0 },
+  amountDue:       { type: Number, default: 0 },
   reference:   { type: String, required: true, unique: true },
   coversUntil: { type: Date, required: true },
   note:        String,

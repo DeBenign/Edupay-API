@@ -83,6 +83,13 @@ Log in as the parent → My Children → link Chidi (student ID + school ID).
 | E5 | Adjust below what was already paid | Student becomes overpaid | [ ] |
 | E6 | Students → **Promote class**: JSS 1 to JSS 2, **Preview only** | List of students; nothing changes | [ ] |
 | E7 | Confirm the promotion | Students move to JSS 2; old fees stay on their accounts | [ ] |
+| E8 | Students → **Import** → **Download template**, add 5 students (one with a bad gender, one reusing an existing Student ID), save as `.csv` | Template downloads with the 5 headers | [ ] |
+| E9 | Choose the file | Preview shows 5 in file, 3 ready, 2 with problems, each listed with its row number and reason; nothing is saved yet | [ ] |
+| E10 | Click **Import 3 students** | Toast: 3 enrolled, 2 skipped; the table shows the 3 new students; the 2 bad rows are not there | [ ] |
+| E11 | Watch the Virtual Account column for a minute | Accounts appear one by one, a few seconds apart; a failed one shows the retry button | [ ] |
+| E12 | Repeat E9 with the same file | All rows now report "already enrolled"; Import is disabled | [ ] |
+| E13 | Import the same data as an `.xlsx` with headers `Name, Admission No, Class, Sex, DOB` and a real Excel date column | Headers are recognised; dates match the cells; `M`/`F` are accepted | [ ] |
+| E14 | Upload a file without a `gender` column; then a file with more than 500 rows; then a `.xls` or `.pdf` | A clear message each time; nothing is sent or saved | [ ] |
 
 ## Part F: Revenue and withdrawals (manual only)
 
@@ -165,13 +172,15 @@ Log in as the admin → **People** in the sidebar. Create a second school with i
 | L4 | Deactivate a bursar (confirm the prompt) | Status becomes Inactive; that bursar can no longer log in ("Account deactivated") | [ ] |
 | L5 | Reactivate the same bursar | Status Active; login works again | [ ] |
 | L6 | Reset a bursar's password | A temporary password is shown once; the old password stops working and the temporary one logs in | [ ] |
+| L6a | Log in as that bursar with the temporary password | A "Choose a new password" screen replaces the app; no dashboard, no sidebar | [ ] |
+| L6b | Try to reuse the temporary password as the new one; then use two different new passwords | Rejected; then "Save and continue" opens the bursar dashboard | [ ] |
+| L6c | While on the change-password screen, call `GET /api/students` with the bursar's token | 403 with code `PASSWORD_CHANGE_REQUIRED` | [ ] |
+| L6d | Reset the bursar again while they are already logged in elsewhere, then click anything there | That session is sent to the change-password screen | [ ] |
 | L7 | Look for a reset or deactivate button on a parent row | Parents have Deactivate/Reactivate only; no password reset | [ ] |
 | L8 | Log in as the **second school's** admin and open People | None of the first school's bursars or parents appear | [ ] |
 | L9 | As the second admin, call `PATCH /api/school-people/<first school's bursar id>/deactivate` | 404; nothing changes | [ ] |
 | L10 | As a bursar or parent, call `GET /api/school-people/bursars` | 403 | [ ] |
 | L11 | Check the `auditlogs` collection | One record per deactivate, reactivate and reset, with actor, school and target | [ ] |
-
-Known gap: after a reset, the bursar is **not yet forced** to change the temporary password at next login (listed in the roadmap).
 
 ---
 

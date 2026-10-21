@@ -27,7 +27,7 @@ const NAV = {
     { to: '/bursar/reports', label: 'Reports', icon: FileText },
     { to: '/bursar/overpayments', label: 'Overpayments', icon: CreditCard },
     { to: '/bursar/referrals', label: 'Referral Rewards', icon: Gift },
-    { to: '/admin/revenue', label: 'Revenue', icon: Wallet }
+    { to: '/bursar/revenue', label: 'Revenue', icon: Wallet }
   ],
   parent: [
     { to: '/parent',label: 'Dashboard', icon: LayoutDashboard },
@@ -45,7 +45,8 @@ function Sidebar({ role, onClose }) {
   const { connected }    = useSocket() || {}
   const navigate         = useNavigate()
   const color            = ROLE_COLOR[role]
-  const nav              = NAV[role] || []
+ const nav              = (NAV[role] || []).filter((i) => i.to !== '/admin/subscriptions' || user?.isPlatformAdmin)
+
 
   const handleLogout = () => { logout(); navigate('/login') }
 

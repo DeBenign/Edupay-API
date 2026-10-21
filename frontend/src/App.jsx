@@ -14,7 +14,7 @@ import AdminPeople from './pages/admin/People'
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 import Login    from './pages/auth/Login'
 import Register from './pages/auth/Register'
-
+import ForcePasswordChange from './pages/auth/ForcePasswordChange'
 // ─── Admin ────────────────────────────────────────────────────────────────────
 import AdminDashboard    from './pages/admin/Dashboard'
 import AdminStudents     from './pages/admin/Students'
@@ -42,6 +42,7 @@ const Protected = ({ children, roles }) => {
   const { user, loading } = useAuth()
   if (loading) return <PageLoader />
   if (!user)   return <Navigate to="/login" replace />
+  if (user.mustChangePassword) return <ForcePasswordChange />
   if (roles && !roles.includes(user.role)) return <Navigate to={`/${user.role}`} replace />
   return children
 }

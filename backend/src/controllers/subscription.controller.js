@@ -91,12 +91,26 @@ const recordPayment = async (req, res) => {
     if (!school) return notFound(res, 'School not found');
 
     const snapshot = statusOf(school, await countEnrolled(school._id));
+    
+    const due = snapshot.amountDue * terms;
+    const note = String(req.body.note || '').trim();
+    if (amount < due) {
+      if (req.body.allowUnderpayment !== true) {
+        return res.status(400).json({
+          success: false, code: 'AMOUNT_BELOW_DUE', amountDue: due,
+          message: `₦${amount.toLocaleString()} is below the ₦${due.toLocaleString()} due for ${terms} term${terms === 1 ? '' : 's'}.`,
+        });
+      }
+      if (!note) return badRequest(res, 'A note explaining the reduced amount is required');
+    }
+    
     const start = Math.max(Date.now(), snapshot.activeUntil.getTime()); // paying early extends, never overlaps
     const coversUntil = new Date(start + terms * TERM_DAYS * DAY_MS);
 
     const payment = await SubscriptionPayment.create({
-      schoolId: school._id, amount, terms, reference, coversUntil, note: req.body.note, recordedBy: req.user._id,
-      studentsBilled: snapshot.billableStudents, ratePerStudent: RATE,
+      schoolId: school._id, amount, terms, reference, coversUntil, note: note || undefined, recordedBy: req.user._id,
+     studentsBilled: snapshot.billableStudents, ratePerStudent: RATE, amountDue: due,
+
     });
     await School.updateOne({ _id: school._id }, { $set: { 'subscription.paidUntil': coversUntil } });
 
