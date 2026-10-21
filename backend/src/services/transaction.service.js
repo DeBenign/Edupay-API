@@ -81,28 +81,45 @@ const syncTransactions = async (io = null) => {
 // ─── Targeted sync: one student's virtual account ────────────────────────────
 const syncStudentTransactions = async (studentId, io = null) => {
   const student = await Student.findById(studentId);
-  if (!student)                           throw new Error('Student not found');
-  if (!student.virtualAccount?.accountNumber) throw new Error('Student has no virtual account');
+  if (!student) throw new Error('Student not found');
 
-  const accountNumber = student.virtualAccount.accountNumber;
-  const from          = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  const nombaAccount    = student.virtualAccounts?.nomba?.accountNumber;
+  const paystackAccount = student.virtualAccounts?.paystack?.accountNumber;
+  if (!nombaAccount && !paystackAccount) throw new Error('Student has no virtual account');
 
-  console.log(`🔄 Syncing transactions for student ${student.studentId} (${accountNumber})`);
+  // Only Nomba has a sync endpoint here. Paystack payments arrive by webhook.
+  if (!nombaAccount) {
+    return {
+      processed: 0, skipped: 0, studentId,
+      note: 'No Nomba account. Paystack payments are recorded by webhook, so there is nothing to sync.',
+    };
+  }
 
-  let processed = 0, skipped = 0;
+  const from = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  console.log(`🔄 Syncing transactions for student ${student.studentId} (${nombaAccount})`);
 
+  let processed = 0, skipped = 0, errors = 0;
+
+  let transactions;
   try {
-    // Use filterTransactions to scope to this specific account
-    const response     = await filterTransactions({ accountNumber, from, limit: 100 });
-    const transactions = response?.transactions || response?.data || [];
+    const response = await filterTransactions({ accountNumber: nombaAccount, from, limit: 100 });
+    transactions = response?.transactions || response?.data || [];
+  } catch (err) {
+    throw new Error(`Sync failed: ${err.message}`);
+  }
 
-    for (const txn of transactions) {
-      const reference  = txn.reference || txn.transactionReference || txn.sessionId;
-      const amountPaid = parseFloat(txn.amount || 0);
-      if (!reference || !amountPaid) { skipped++; continue; }
+  for (const txn of transactions) {
+    const reference  = txn.reference || txn.transactionReference || txn.sessionId;
+    const amountPaid = parseFloat(txn.amount || 0);
+    if (!reference || !amountPaid) { skipped++; continue; }
 
+    // Same inflow-only filter as the hourly sync
+    const txnType = (txn.type || txn.transactionType || '').toLowerCase();
+    if (txnType && !txnType.includes('credit') && txnType !== 'inflow') { skipped++; continue; }
+
+    try {
       const result = await processPayment({
-        accountNumber,
+        accountNumber: nombaAccount,
         amountPaid,
         reference,
         narration:    txn.narration || null,
@@ -113,15 +130,15 @@ const syncStudentTransactions = async (studentId, io = null) => {
         io,
       });
       result.skipped ? skipped++ : processed++;
+    } catch (procErr) {
+      errors++;   // one bad transaction no longer aborts the rest
+      console.error(`  ❌ Failed to process ${reference}:`, procErr.message);
     }
-  } catch (err) {
-    throw new Error(`Sync failed: ${err.message}`);
   }
 
-  console.log(`✅ Student sync done | processed: ${processed} | skipped: ${skipped}`);
-  return { processed, skipped, studentId, accountNumber };
+  console.log(`✅ Student sync done | processed: ${processed} | skipped: ${skipped} | errors: ${errors}`);
+  return { processed, skipped, errors, studentId, accountNumber: nombaAccount };
 };
-
 const getLastSyncTime = () => lastSyncTime;
 
 module.exports = { syncTransactions, syncStudentTransactions, getLastSyncTime };
