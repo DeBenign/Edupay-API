@@ -14,9 +14,10 @@ const NAV = {
   { to: '/admin/fees',     label: 'Fee Structures', icon: CreditCard },
   { to: '/admin/overpayments', label: 'Overpayments', icon: RotateCcw },
   { to: '/admin/staff',    label: 'Staff', icon: Users },
+  { to: '/admin/people', label: 'People', icon: Users },
   { to: '/admin/settings', label: 'Settings', icon: Settings },
   { to: '/admin/referrals', label: 'Referral Rewards', icon: Gift },
-  { to: '/admin/revenue', label: 'Revenue', icon: Wallet }
+  { to: '/admin/revenue', label: 'Revenue', icon: Wallet },
 ],
   bursar: [
     { to: '/bursar', label: 'Dashboard', icon: LayoutDashboard },

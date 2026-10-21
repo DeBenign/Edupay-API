@@ -219,29 +219,25 @@ const retryProvision = async (studentId) => {
                 <td><span className="font-mono text-xs bg-gray-100 px-2 py-0.5 rounded">{s.class}</span></td>
                 <td>
                   {(() => {
-                        const nomba = s.virtualAccounts?.nomba?.accountNumber
-                        const paystack = s.virtualAccounts?.paystack?.accountNumber
-                        if (!nomba && !paystack) {
-                         return (
-                            <div className="flex items-center gap-2">
-                              <button onClick={() => showAccount(s)} className="font-mono text-xs text-blue-600 hover:underline">
-                                {nomba || paystack}{nomba && paystack ? ' +1' : ''}
-                              </button>
-                              {(!nomba || !paystack) && (
-                                <button onClick={() => retryProvision(s._id)} disabled={retrying === s._id}
-                                  className="text-[10px] text-amber-600 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5 hover:bg-amber-100 disabled:opacity-50">
-                                  {retrying === s._id ? '…' : `+ ${nomba ? 'Paystack' : 'Nomba'}`}
-                                </button>
-                              )}
-                            </div>
-                          )
-                        }
-                        return (
-                          <button onClick={() => showAccount(s)} className="font-mono text-xs text-blue-600 hover:underline">
-                            {nomba || paystack}{nomba && paystack ? ' +1' : ''}
+                    const nomba = s.virtualAccounts?.nomba?.accountNumber
+                    const paystack = s.virtualAccounts?.paystack?.accountNumber
+                    const missing = !nomba && !paystack ? 'Provision' : !nomba ? '+ Nomba' : !paystack ? '+ Paystack' : null
+                    return (
+                      <div className="flex items-center gap-2">
+                        {nomba || paystack
+                          ? <button onClick={() => showAccount(s)} className="font-mono text-xs text-blue-600 hover:underline">
+                              {nomba || paystack}{nomba && paystack ? ' +1' : ''}
+                            </button>
+                          : <span className="text-xs text-gray-400">Pending</span>}
+                        {missing && (
+                          <button onClick={() => retryProvision(s._id)} disabled={retrying === s._id}
+                            className="text-[10px] text-amber-600 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5 hover:bg-amber-100 disabled:opacity-50">
+                            {retrying === s._id ? '…' : missing}
                           </button>
-                        )
-                      })()}
+                        )}
+                      </div>
+                    )
+                  })()}
                 </td>
                 <td>
                   {s.currentStatus
@@ -297,18 +293,7 @@ const retryProvision = async (studentId) => {
       </Modal>
 
      {/* Account Modal */}
-     <div className="bg-gray-50 rounded-lg p-3 text-sm space-y-2">
-        <p className="text-xs text-gray-500">Parent link code</p>
-        {accountModal.linkCode
-          ? <div className="flex items-center justify-between">
-              <span className="font-mono font-bold text-lg">{fmtCode(accountModal.linkCode)}</span>
-              <button className="btn-secondary text-xs" onClick={() => copy(fmtCode(accountModal.linkCode))}>Copy</button>
-            </div>
-          : <p className="text-gray-500">{accountModal.hasParent ? 'Linked to a parent.' : 'No active code.'}</p>}
-        <button className="text-xs text-blue-600 hover:underline" onClick={() => newLinkCode(accountModal._id, accountModal.hasParent)}>
-          {accountModal.hasParent ? 'Unlink parent and issue new code' : 'Issue a new code'}
-        </button>
-      </div>
+    
       <Modal open={!!accountModal} onClose={() => setAccountModal(null)} title="Virtual Account Details">
         {accountModal && (
           <div className="space-y-4">
@@ -321,6 +306,18 @@ const retryProvision = async (studentId) => {
               <span className="font-semibold">{accountModal.studentName} · {accountModal.studentId}</span>
             </div>
 
+             <div className="bg-gray-50 rounded-lg p-3 text-sm space-y-2">
+                <p className="text-xs text-gray-500">Parent link code</p>
+                {accountModal.linkCode
+                  ? <div className="flex items-center justify-between">
+                      <span className="font-mono font-bold text-lg">{fmtCode(accountModal.linkCode)}</span>
+                      <button className="btn-secondary text-xs" onClick={() => copy(fmtCode(accountModal.linkCode))}>Copy</button>
+                    </div>
+                  : <p className="text-gray-500">{accountModal.hasParent ? 'Linked to a parent.' : 'No active code.'}</p>}
+                <button className="text-xs text-blue-600 hover:underline" onClick={() => newLinkCode(accountModal._id, accountModal.hasParent)}>
+                  {accountModal.hasParent ? 'Unlink parent and issue new code' : 'Issue a new code'}
+                </button>
+              </div>
             {accountModal.paymentOptions?.map((opt) => (
               <div key={opt.gateway} className="bg-gray-50 rounded-xl p-5 space-y-3">
                 <div className="flex justify-between text-xs uppercase tracking-wide text-gray-400 font-semibold">

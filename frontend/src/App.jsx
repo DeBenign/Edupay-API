@@ -9,6 +9,7 @@ import DashboardLayout             from './components/layout/DashboardLayout'
 import ReferralClaim from './pages/admin/ReferralClaim'
 import Revenue from './pages/admin/Revenue'
 import Subscriptions from './pages/admin/Subscriptions'
+import AdminPeople from './pages/admin/People'
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 import Login    from './pages/auth/Login'
@@ -105,7 +106,16 @@ export default function App() {
               <WithLayout><AdminSettings /></WithLayout>
             </Protected>
           }/>
-          <Route path="/admin/subscriptions" element={<Protected roles={['admin']}><WithLayout><Subscriptions /></WithLayout></Protected>} />
+          <Route path="/admin/subscriptions" element={
+            <Protected roles={['admin']}>
+              <WithLayout><Subscriptions /></WithLayout>
+            </Protected>
+          } />
+           <Route path="/admin/people" element={
+            <Protected roles={['admin']}>
+              <WithLayout><AdminPeople /></WithLayout>
+            </Protected>
+          } />
 
           {['admin', 'bursar', 'parent'].map(role => (
           <Route key={role} path={`/${role}/referrals`} element={

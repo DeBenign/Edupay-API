@@ -61,6 +61,7 @@ export const reportAPI = {
   classBreakdown:  (params) => api.get('/reports/class', { params }),
   overpayments:    (params) => api.get('/reports/overpayments', { params }),
   studentStatement:(id)     => api.get(`/reports/student/${id}/statement`),
+  recentPayments: (params) => api.get('/reports/recent', { params }),
 }
 
 // ─── Parents ──────────────────────────────────────────────────────────────────
@@ -117,4 +118,11 @@ export const subscriptionAPI = {
   schools: ()               => api.get('/subscriptions/schools'),
   record:  (schoolId, data) => api.post(`/subscriptions/schools/${schoolId}/payments`, data),
   setStudents: (data) => api.patch('/subscriptions/declared-students', data),
+}
+
+// ─── People ────────────────────────────────────────────────────────────────
+export const peopleAPI = {
+  list: (role, params) => api.get(`/school-people/${role}`, { params }),
+  setActive: (id, active) => api.patch(`/school-people/${id}/${active ? 'reactivate' : 'deactivate'}`),
+  resetPassword: (id) => api.post(`/school-people/${id}/reset-password`),
 }

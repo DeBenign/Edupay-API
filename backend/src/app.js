@@ -54,6 +54,7 @@ app.use('/api/referrals',     require('./routes/referral.routes'));
 app.use('/api/revenue',       require('./routes/revenue.routes'));
 app.use('/api/withdrawals',   require('./routes/withdrawal.routes'));
 app.use('/api/subscriptions', require('./routes/subscription.routes'));
+app.use('/api/school-people', require('./routes/schoolPeople.routes'))
 
 // ── Error handlers ────────────────────────────────────────────────────────────
 app.use(notFoundHandler);

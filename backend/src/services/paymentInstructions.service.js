@@ -13,11 +13,12 @@ const buildPaymentInstructions = async (student) => {
     if (acc?.accountNumber) paymentOptions.push({ gateway, ...acc });
   });
 
-  const [assignments, waived] = await Promise.all([
+  const [assignments, waived, discountOn] = await Promise.all([
     FeeAssignment.find({ studentId: student._id, status: { $in: ['unpaid', 'partial'] } })
       .populate('feeStructureId', 'name term academicSession dueDate studentOnly')
       .sort({ createdAt: 1 }),
-    isFeeWaived(student.schoolId), isDiscountEnabled(student.schoolId)
+    isFeeWaived(student.schoolId),
+    isDiscountEnabled(student.schoolId),
   ]);
 
   const outstandingFees = assignments.map((a) => {

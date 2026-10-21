@@ -16,19 +16,18 @@ export default function AdminDashboard() {
   const [error,    setError]    = useState('')
 
   useEffect(() => {
-    const load = async () => {
-      try {
-        const [schoolRes, sumRes] = await Promise.allSettled([
-          schoolAPI.getmine(),
-          reportAPI.schoolSummary(),
-        ])
-        if (schoolRes.status === 'fulfilled') setSchool(schoolRes.value.data.data.school)
-        if (sumRes.status   === 'fulfilled') setSummary(sumRes.value.data.data)
-      } catch { setError('Could not load dashboard') }
-      finally { setLoading(false) }
-    }
-    load()
-  }, [])
+  const load = async () => {
+    try {
+      const res = await reportAPI.schoolSummary()
+      setSummary(res.data.data)
+      setSchool(res.data.data.school)
+    } catch (err) {
+      console.error('Dashboard load failed:', err)
+      setError(err.response?.data?.message || err.message)
+    } finally { setLoading(false) }
+  }
+  load()
+}, [])
 
   if (loading) return <div className="flex justify-center py-24"><Spinner size="lg" /></div>
 

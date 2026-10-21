@@ -59,9 +59,6 @@ const createManualPayment = async (req, res) => {
       return badRequest(res, 'studentId, amountPaid, and reference are required');
     }
     if (amountPaid <= 0) return badRequest(res, 'amountPaid must be greater than 0');
-    if (gateway && !['nomba', 'paystack'].includes(gateway)) {
-      return badRequest(res, "gateway must be 'nomba' or 'paystack' if provided");
-    }
 
     const access = await checkStudentAccess(req, studentId);
     if (access.code) return denyAccess(res, access.code);

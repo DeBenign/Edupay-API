@@ -47,7 +47,7 @@ export default function BursarStudentDetail() {
       const { processed, skipped } = res.data.data
       toast(`Sync complete — ${processed} new, ${skipped} already recorded`)
       load()
-    } catch { toast('Sync failed', 'error') }
+    } catch (err) { toast(err.response?.data?.message || 'Sync failed', 'error') }
     finally { setSyncing(false) }
   }
 
@@ -62,7 +62,7 @@ export default function BursarStudentDetail() {
       })
       toast('Payment recorded successfully!')
       setShowManual(false)
-      setManualForm({ amountPaid: '', reference: '', narration: '' })
+      setManualForm({ amountPaid: '', reference: '', method: 'Cash', narration: '' })
       load()
     } catch (er) {
       setPayErr(er.response?.data?.message || 'Failed to record payment')
@@ -73,6 +73,7 @@ export default function BursarStudentDetail() {
     navigator.clipboard.writeText(text)
     setCopied(true); setTimeout(() => setCopied(false), 2000)
   }
+
 
   if (loading) return <div className="flex justify-center py-24"><Spinner size="lg" /></div>
   if (!student) return <Alert type="error" message="Student not found" />
@@ -199,7 +200,12 @@ export default function BursarStudentDetail() {
             Fee Assignments ({assignments.length})
           </div>
           <div className="divide-y divide-gray-50">
-            {assignments.map(a => (
+            {assignments.map(a => {
+            const st = a.balance > 0
+              ? (a.totalPaid > 0 ? 'partial' : 'unpaid')
+              : a.overpayment > 0 ? 'overpaid' : 'paid'
+
+            return (
               <div key={a._id} className="px-5 py-4 flex items-center justify-between">
                 <div>
                   <p className="font-semibold text-gray-900 text-sm">{a.feeStructureId?.name}</p>
@@ -212,10 +218,11 @@ export default function BursarStudentDetail() {
                     <p className="text-sm font-bold text-gray-900">{formatCurrency(a.totalPaid)}</p>
                     <p className="text-xs text-gray-400">of {formatCurrency(a.amountExpected)}</p>
                   </div>
-                  <StatusBadge status={overall} />
+                  <StatusBadge status={st} />
                 </div>
               </div>
-            ))}
+            )
+          })}
           </div>
         </div>
       )}

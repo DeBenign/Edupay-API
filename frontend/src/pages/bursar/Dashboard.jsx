@@ -41,9 +41,9 @@ export default function BursarDashboard() {
             processedAt:          p.processedAt,
             source:               p.source,
           }))
-        return [...prev, ...newOnes].slice(0, MAX_FEED)
+        return [...newOnes, ...prev].slice(0, MAX_FEED)
       })
-    } catch { setError('Could not load dashboard data') }
+    } catch (err) { console.error('Dashboard load failed:', err); setError('Could not load dashboard data') }
     finally { setLoading(false) }
   }, [])
 
