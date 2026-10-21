@@ -1,6 +1,6 @@
 # EduPay test plan
 
-Work through the parts in order. Parts A to F, H and K need **no gateway**. Parts G, I and J need real online money and are blocked until Nomba or Paystack works. Tick each box as it passes. Write down anything that does not match the "Expect" column.
+Work through the parts in order. Parts A to F, H, K and L need **no gateway**. Parts G, I and J need real online money and are blocked until Nomba or Paystack works. Tick each box as it passes. Write down anything that does not match the "Expect" column.
 
 ## Before you start
 
@@ -47,6 +47,8 @@ Log in as the bursar → Students → open a student → **Record Payment**.
 | B5 | Chidi: Cash, `RCPT-004`, ₦25,000 | Status **overpaid**, overpayment ₦5,000 | [ ] |
 | B6 | Check the payment history of each student | Source shows "manual"; no service charge on any | [ ] |
 | B7 | Reports → class breakdown and a student statement | Totals match what you entered | [ ] |
+| B8 | Open the bursar dashboard and the admin dashboard | Both load with totals; no "Could not load" error | [ ] |
+| B9 | Click **Sync Transactions** on a student with only a Paystack account | A note says there is nothing to sync; no error | [ ] |
 
 ## Part C: Parent views
 
@@ -105,11 +107,14 @@ Log in as the parent → My Children → link Chidi (student ID + school ID).
 
 | # | Do | Expect | ✓ |
 |---|---|---|---|
-| H1 | Admin: Settings | Subscription card: free pilot with an end date | [ ] |
+| H1 | Admin: Settings | Subscription card: free pilot with an end date, price shown as students × ₦300, minimum ₦30,000 | [ ] |
 | H2 | Platform admin: open `/admin/subscriptions` | Every school with status and student count | [ ] |
-| H3 | Record ₦50,000 with a bank reference for a school | Status "active"; period extended by one term | [ ] |
+| H3 | Record the amount due (at least ₦30,000) with a bank reference for a school | Status "active"; period extended by one term | [ ] |
 | H4 | Reuse the same reference | Rejected | [ ] |
 | H5 | A non-platform admin opens `/admin/subscriptions` | "Platform admin only" | [ ] |
+| H6 | Declare 50 students in Settings (fewer than 100 enrolled) | Billed ₦30,000: the minimum applies | [ ] |
+| H7 | Declare 200 students | Billed ₦60,000 (200 × ₦300) | [ ] |
+| H8 | Declare fewer students than are enrolled | Billed on the enrolled count, not the declared one | [ ] |
 
 ## Part I: Online payments (when a gateway works)
 
@@ -148,6 +153,28 @@ Log in as the parent → My Children → link Chidi (student ID + school ID).
 
 ---
 
+## Part L: School people (admin)
+
+Log in as the admin → **People** in the sidebar. Create a second school with its own admin, bursar and parent so you can check isolation.
+
+| # | Do | Expect | ✓ |
+|---|---|---|---|
+| L1 | Open the **Bursars** tab | Only this school's bursars, with name, phone, email and status; no password or token anywhere | [ ] |
+| L2 | Open the **Parents** tab | This school's parents, each with their linked children and classes | [ ] |
+| L3 | Search by name, then email, then phone | The list filters each time | [ ] |
+| L4 | Deactivate a bursar (confirm the prompt) | Status becomes Inactive; that bursar can no longer log in ("Account deactivated") | [ ] |
+| L5 | Reactivate the same bursar | Status Active; login works again | [ ] |
+| L6 | Reset a bursar's password | A temporary password is shown once; the old password stops working and the temporary one logs in | [ ] |
+| L7 | Look for a reset or deactivate button on a parent row | Parents have Deactivate/Reactivate only; no password reset | [ ] |
+| L8 | Log in as the **second school's** admin and open People | None of the first school's bursars or parents appear | [ ] |
+| L9 | As the second admin, call `PATCH /api/school-people/<first school's bursar id>/deactivate` | 404; nothing changes | [ ] |
+| L10 | As a bursar or parent, call `GET /api/school-people/bursars` | 403 | [ ] |
+| L11 | Check the `auditlogs` collection | One record per deactivate, reactivate and reset, with actor, school and target | [ ] |
+
+Known gap: after a reset, the bursar is **not yet forced** to change the temporary password at next login (listed in the roadmap).
+
+---
+
 ## Result
 
 | Part | Passed | Failed | Notes |
@@ -163,3 +190,4 @@ Log in as the parent → My Children → link Chidi (student ID + school ID).
 | I Online payments | | | |
 | J Withdrawal | | | |
 | K Security | | | |
+| L School people | | | |

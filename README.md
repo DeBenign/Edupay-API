@@ -37,6 +37,7 @@ School fee collection in Nigeria still runs on shared bank accounts, paper recei
 Register as admin → create the school (optional referral code)
    → save the payout bank account (Revenue page)
    → create the bursar and parent accounts (Staff)
+   → declare how many students the school has (Settings), which sets the subscription price
    → create a fee structure per class / term / session → assign it to the class
    → enroll students (online accounts are provisioned automatically when the gateways are available)
 ```
@@ -79,7 +80,7 @@ Balances update on the admin, bursar and parent dashboards and in the live feed
 
 | Role | Does | Sees |
 |---|---|---|
-| **Admin** | Setup, fees, one-off fees, hardship adjustments, class promotion, overpayment refunds, payout account, withdrawals | Collection totals, students, overpayments, revenue, subscription status, referral codes |
+| **Admin** | Setup, fees, one-off fees, hardship adjustments, class promotion, overpayment refunds, payout account, withdrawals, manage the school's bursars and parents (People) | Collection totals, students, overpayments, revenue, subscription status, referral codes, the bursars and parents of their own school |
 | **Bursar** | Records manual payments, monitors the live feed, reads reports, handles overpayments | Student statements, class breakdown, balances, revenue (view only) |
 | **Parent** | Links a child, reads balances, pays online or at the school, resolves overpayments, claims referral rewards | Balance and progress, the exact amount to transfer, any early-payment offer, payment history |
 | **Platform admin** | Records subscription payments, reviews schools and referrals | Every school's status and student count |
@@ -140,7 +141,8 @@ No service charge, no referral conversion, not withdrawable. Each needs a unique
 ## How EduPay earns
 
 - **Service charge margin** on online payments (service charge minus the gateway's fee).
-- **Subscription** per school per term, recorded by the platform admin. New schools get a free pilot of 120 days. Schools see a banner as it ends. Nothing is locked.
+- **Subscription** per school per term, recorded by the platform admin. Price = students × ₦300, **never below ₦30,000 per term**. Students billed = the higher of the count the school declared and the number actually enrolled. New schools get a free pilot of 120 days. Schools see a banner as it ends. Nothing is locked.
+  - The ₦30,000 minimum is the starting price. It will be raised as more schools join, and schools will be told in advance by email and on their dashboard before any increase takes effect (planned, see Roadmap).
 - **Referral rewards** are paid only from real online margin (see below), so they never cost more than they earn.
 
 ### Referral program
@@ -163,6 +165,7 @@ No service charge, no referral conversion, not withdrawable. Each needs a unique
 - **One-off fees** (uniform, excursion) added to a single student.
 - **Hardship adjustments:** an admin can reduce one student's fee. A written reason is required and kept as an audit note.
 - **Class promotion** with a preview first; graduating a class deactivates its students. Old fee records stay on each account.
+- **People:** an admin can see the bursars and parents of their own school (name, phone, email, status, and each parent's linked children), search them, deactivate or reactivate an account, and reset a bursar's password. A reset issues a one-time temporary password; the existing password can never be read. Bursars and parents of other schools are never visible, and password hashes, tokens and link codes are never returned. Deactivation and password resets are recorded in an audit log.
 
 ---
 
@@ -175,9 +178,9 @@ No service charge, no referral conversion, not withdrawable. Each needs a unique
 ```
 backend/src/
 ├── models/        User, School, Student, FeeStructure, FeeAssignment, Payment, Withdrawal,
-│                  Referral, ReferralReward, SubscriptionPayment, WebhookLog
+│                  Referral, ReferralReward, SubscriptionPayment, WebhookLog, AuditLog
 ├── controllers/   auth, school, student, fee, payment, webhook, report, notification, parent,
-│                  referral, revenue, withdrawal, subscription
+│                  referral, revenue, withdrawal, subscription, schoolPeople
 ├── services/      reconciliation, virtualAccount, paymentInstructions, platformFee,
 │                  earlyPaymentDiscount, fee, revenue, withdrawal, referral, vtu,
 │                  nomba, paystack (+ mappers), transaction (hourly sync)
@@ -196,7 +199,7 @@ frontend/src/
 | Nomba | `payment_success` where the transaction type is `vact_transfer` | HMAC-SHA256 over the documented field string plus `nomba-timestamp`, keyed with the signature key from the Nomba dashboard |
 | Paystack | `charge.success` | HMAC-SHA512 over the raw body, keyed with the secret key |
 
-Requests that fail verification are rejected and logged. Accepted webhooks are stored for audit and replay, scoped to the school. An hourly sync catches anything a webhook missed.
+Requests that fail verification are rejected and logged. Accepted webhooks are stored for audit and replay, scoped to the school. An hourly sync catches anything a webhook missed (Nomba transactions only for now; Paystack payments arrive by webhook).
 
 ---
 
@@ -222,6 +225,7 @@ Requests that fail verification are rejected and logged. Accepted webhooks are s
 /api/auth          /api/schools        /api/students      /api/fees
 /api/payments      /api/webhooks       /api/reports       /api/revenue
 /api/withdrawals   /api/referrals      /api/parents       /api/subscriptions
+/api/school-people
 ```
 
 ---
@@ -260,7 +264,7 @@ Sandbox accounts are simulated and cannot receive real money. Set `NODE_ENV=prod
 | `PAYSTACK_MOCK_MODE` | Development only: fakes Paystack accounts |
 | `WEBHOOK_SKIP_VERIFY` | Development only: skips signature checks. Ignored in production |
 | `VTPASS_BASE_URL`, `VTPASS_API_KEY`, `VTPASS_SECRET_KEY`, `VTPASS_PUBLIC_KEY` | Airtime and data rewards |
-| `SUBSCRIPTION_PRICE_PER_TERM` | Subscription price shown to schools |
+| `SUBSCRIPTION_PER_STUDENT`, `SUBSCRIPTION_MINIMUM` | Subscription rate per student per term (default ₦300) and the minimum per school per term (default ₦30,000) |
 | `REFERRAL_REWARD_AMOUNT`, `REFERRAL_UNLOCK_MARGIN`, `REFERRAL_MAX_REWARDS_PER_MONTH` | Optional referral tuning |
 
 Never commit real credentials. Treat any committed secret as compromised and rotate it.
@@ -269,7 +273,7 @@ Never commit real credentials. Treat any committed secret as compromised and rot
 
 ## Testing
 
-Follow **[TEST.md](./TEST.md)**. It walks through every role in order: setup, manual payments, parent views, overpayments, fee tools, revenue, referrals, subscriptions, online payments and security checks. Manual mode can be tested end to end today with no gateway.
+Follow **[TEST.md](./TEST.md)**. It walks through every role in order: setup, manual payments, parent views, overpayments, fee tools, revenue, referrals, subscriptions, school people, online payments and security checks. Manual mode can be tested end to end today with no gateway.
 
 ---
 
@@ -279,7 +283,7 @@ Follow **[TEST.md](./TEST.md)**. It walks through every role in order: setup, ma
 
 **Verifying end to end:** live Nomba payments and webhooks; Paystack dedicated accounts, pending Paystack's activation.
 
-**Next:** payout webhooks to confirm withdrawals and refunds, per-gateway withdrawable balances, a per-school switch for the early discount, school-issued codes for linking children, and confirming each payment with the gateway before crediting.
+**Next:** bulk student enrollment by CSV or Excel upload (with a preview before anything is saved), advance notice of subscription price increases by email and on the dashboard, forcing a password change after an admin reset, a Paystack path in the per-student sync, payout webhooks to confirm withdrawals and refunds, per-gateway withdrawable balances, a per-school switch for the early discount, school-issued codes for linking children, and confirming each payment with the gateway before crediting.
 
 ---
 

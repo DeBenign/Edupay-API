@@ -15,6 +15,7 @@ const NAV = {
   { to: '/admin/overpayments', label: 'Overpayments', icon: RotateCcw },
   { to: '/admin/staff',    label: 'Staff', icon: Users },
   { to: '/admin/people', label: 'People', icon: Users },
+  { to: '/admin/subscriptions', label: 'Subscriptions', icon: CreditCard },
   { to: '/admin/settings', label: 'Settings', icon: Settings },
   { to: '/admin/referrals', label: 'Referral Rewards', icon: Gift },
   { to: '/admin/revenue', label: 'Revenue', icon: Wallet },

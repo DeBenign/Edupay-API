@@ -44,8 +44,8 @@ export default function BursarStudentDetail() {
     setSyncing(true)
     try {
       const res = await paymentAPI.syncStudent(id)
-      const { processed, skipped } = res.data.data
-      toast(`Sync complete — ${processed} new, ${skipped} already recorded`)
+      const { processed, skipped, note } = res.data.data
+      toast(note || `Sync complete — ${processed} new, ${skipped} already recorded`)
       load()
     } catch (err) { toast(err.response?.data?.message || 'Sync failed', 'error') }
     finally { setSyncing(false) }
