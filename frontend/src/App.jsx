@@ -6,9 +6,7 @@ import { AuthProvider, useAuth }   from './context/AuthContext'
 import { SocketProvider }          from './context/SocketContext'
 import { PageLoader }              from './components/ui'
 import DashboardLayout             from './components/layout/DashboardLayout'
-import ReferralClaim from './pages/admin/ReferralClaim'
-import Revenue from './pages/admin/Revenue'
-import Subscriptions from './pages/admin/Subscriptions'
+
 import AdminPeople from './pages/admin/People'
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
@@ -20,6 +18,9 @@ import AdminDashboard    from './pages/admin/Dashboard'
 import AdminStudents     from './pages/admin/Students'
 import AdminFeeStructures from './pages/admin/FeeStructures'
 import AdminStaff        from './pages/admin/Staff'
+import ReferralClaim from './pages/admin/ReferralClaim'
+import Revenue from './pages/admin/Revenue'
+import Subscriptions from './pages/admin/Subscriptions'
 import AdminOverpayments from './pages/admin/Overpayments'
 import AdminSettings     from './pages/admin/Settings'
 
