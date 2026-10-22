@@ -15,7 +15,6 @@ const schoolSchema = new mongoose.Schema({
   // null = fall back to the global DEFAULT_PAYMENT_GATEWAY env var.
   paymentGateway: { type: String, enum: ['nomba', 'paystack', null], default: null },
   earlyPaymentDiscountEnabled: { type: Boolean, default: false },
-  declaredStudents: { type: Number, default: 0, min: 0 },
 
   // ── Referrals ──────────────────────────────────────────────────────────
   // This school's own code, given out to refer OTHER schools.
@@ -30,6 +29,7 @@ const schoolSchema = new mongoose.Schema({
   subscription: {
     pilotEndsAt: { type: Date, default: () => new Date(Date.now() + 120 * 24 * 60 * 60 * 1000) },
     paidUntil:   { type: Date, default: null },
+    declaredStudents: { type: Number, default: 0, min: 0 },
   },
   // ── Payout destination for this school's revenue withdrawals ────────────
   payoutBank: {

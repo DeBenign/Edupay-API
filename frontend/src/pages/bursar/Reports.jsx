@@ -4,6 +4,8 @@ import { reportAPI } from '../../api'
 import { StatCard, Table, EmptyState, Spinner, Alert } from '../../components/ui'
 import { StatusBadge } from '../../components/ui'
 import { formatCurrency, formatDate, termLabel } from '../../utils/formatters'
+import { downloadCsv } from '../../utils/csv'
+import { classReportCsv, reportFileName } from '../../utils/reportExport'
 import { FileText, Download, Filter, TrendingUp, AlertTriangle, Users, Wallet } from 'lucide-react'
 
 export default function BursarReports() {
@@ -32,6 +34,7 @@ export default function BursarReports() {
   if (loading) return <div className="flex justify-center py-24"><Spinner size="lg" /></div>
 
   const c = summary?.collection || {}
+  const exportCsv = () => downloadCsv(reportFileName(filters), classReportCsv(classes))
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -40,7 +43,8 @@ export default function BursarReports() {
           <h1 className="page-title">Reports</h1>
           <p className="page-sub">School-wide collection and payment analysis</p>
         </div>
-        <button className="btn-secondary gap-2">
+         <button className="btn-secondary gap-2" onClick={exportCsv} disabled={classes.length === 0}
+            title={classes.length === 0 ? 'Nothing to export yet' : 'Download this report as a CSV file'}>
           <Download size={15} /> Export CSV
         </button>
       </div>
