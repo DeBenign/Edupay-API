@@ -15,6 +15,7 @@ export default function Subscriptions() {
   }, [])
   useEffect(() => { load() }, [load])
 
+  
   const record = async (s) => {
   const amountText = window.prompt(`Amount received from ${s.name} (₦)`, String(s.amountDue))
   if (!amountText) return
@@ -36,6 +37,24 @@ export default function Subscriptions() {
     } else setMsg({ type: 'error', text: data?.message || 'Failed to record payment' })
   }
 }
+
+  const extend = async (s) => {
+    const daysText = window.prompt(`Give ${s.name} how many extra days (1 to 30)?`, '7')
+    if (!daysText) return
+    const note = window.prompt('Reason (for example: transfer promised for Friday)')
+    if (!note?.trim()) return
+    try {
+      await subscriptionAPI.extend(s.schoolId, { days: Number(daysText), note: note.trim() })
+      setMsg({ type: 'success', text: `Access extended for ${s.name}` }); load()
+    } catch (err) { setMsg({ type: 'error', text: err.response?.data?.message || 'Failed to extend access' }) }
+  }
+
+  const stateOf = (s) => s.locked
+    ? { text: 'LOCKED', cls: 'text-red-600 font-semibold' }
+    : s.status === 'due'
+      ? { text: `overdue · grace until ${formatDate(s.graceEndsAt)}`, cls: 'text-red-600' }
+      : { text: s.status, cls: s.status === 'active' ? 'text-green-600' : 'text-amber-600' }
+
   if (loading) return <div className="flex justify-center py-24"><Spinner size="lg" /></div>
   return (
     <div className="space-y-5 animate-fade-in">
@@ -49,9 +68,14 @@ export default function Subscriptions() {
               <p className="text-xs text-gray-400">{s.declaredStudents} declared · {s.enrolledStudents} enrolled · bills {s.billableStudents} · {s.phone || s.email}</p>
             </div>
             <div className="flex items-center gap-4">
-              <span className={s.status === 'due' ? 'text-red-600' : s.status === 'active' ? 'text-green-600' : 'text-amber-600'}>
-                {s.status} · until {formatDate(s.activeUntil)}
-              </span>
+               <span className={stateOf(s).cls}>
+                {stateOf(s).text} · until {formatDate(s.activeUntil)}
+                {s.extendedUntil && new Date(s.extendedUntil) > new Date() && ` · extended to ${formatDate(s.extendedUntil)}`}
+               </span>
+               <button className="text-xs text-blue-600 hover:underline" onClick={() => record(s)}>Record {formatCurrency(s.amountDue)}</button>
+              {(s.status === 'due' || s.locked) && (
+                <button className="text-xs text-gray-500 hover:underline" onClick={() => extend(s)}>Extend</button>
+              )}
               <button className="text-xs text-blue-600 hover:underline" onClick={() => record(s)}>Record {formatCurrency(s.amountDue)}</button>
             </div>
           </div>

@@ -197,7 +197,8 @@ const saveStudentCount = async () => {
         <p className="text-sm text-gray-600">
           {sub.status === 'pilot'  && `Free pilot until ${formatDate(sub.activeUntil)}.`}
           {sub.status === 'active' && `Paid until ${formatDate(sub.activeUntil)}.`}
-          {sub.status === 'due'    && 'Your subscription is overdue.'}
+          {sub.status === 'due' && !sub.locked && `Your subscription is overdue. Adding students, fees, staff and cash payments pauses on ${formatDate(sub.graceEndsAt)}.`}
+          {sub.locked && 'Your subscription has ended. Adding students, fees, staff and cash payments is paused until payment is recorded.'}
         </p>
         <div className="bg-gray-50 rounded-lg p-3 text-sm space-y-1">
           <div className="flex justify-between"><span className="text-gray-500">Students you declared</span><span>{sub.declaredStudents}</span></div>

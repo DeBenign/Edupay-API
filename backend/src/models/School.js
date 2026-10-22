@@ -30,6 +30,10 @@ const schoolSchema = new mongoose.Schema({
     pilotEndsAt: { type: Date, default: () => new Date(Date.now() + 120 * 24 * 60 * 60 * 1000) },
     paidUntil:   { type: Date, default: null },
     declaredStudents: { type: Number, default: 0, min: 0 },
+    extendedUntil: { type: Date, default: null },
+   extendedNote:  { type: String, default: null },
+    extendedBy:    { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+   extendedAt:    { type: Date, default: null },
   },
   // ── Payout destination for this school's revenue withdrawals ────────────
   payoutBank: {

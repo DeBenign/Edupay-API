@@ -119,6 +119,8 @@ export const subscriptionAPI = {
   schools: ()               => api.get('/subscriptions/schools'),
   record:  (schoolId, data) => api.post(`/subscriptions/schools/${schoolId}/payments`, data),
   setStudents: (data) => api.patch('/subscriptions/declared-students', data),
+  extend:  (schoolId, data) => api.post(`/subscriptions/schools/${schoolId}/extend`, data),
+
 }
 
 // ─── People ────────────────────────────────────────────────────────────────

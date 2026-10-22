@@ -3,35 +3,21 @@ const Student = require('../models/Student');
 const SubscriptionPayment = require('../models/SubscriptionPayment');
 const { success, created, badRequest, notFound, error } = require('../utils/apiResponse');
 
-const DAY_MS = 24 * 60 * 60 * 1000;
-const TERM_DAYS = 120;
-const RATE    = Number(process.env.SUBSCRIPTION_PER_STUDENT) || 300;
-const MINIMUM = Number(process.env.SUBSCRIPTION_MINIMUM) || 30000;
-const PAY_TO = {
-  bank:          process.env.SUBSCRIPTION_BANK_NAME      || 'GTBank',
-  accountNumber: process.env.SUBSCRIPTION_ACCOUNT_NUMBER || '0222565760',
-  accountName:   process.env.SUBSCRIPTION_ACCOUNT_NAME   || 'Yusuf Ibrahim',
-};
-
-// Per term: students × rate, never below the minimum.
-// Students = the higher of the declared count and the enrolled count.
-const priceFor = (declared, enrolled) => {
-  const billableStudents = Math.max(declared || 0, enrolled || 0);
-  return { billableStudents, ratePerStudent: RATE, minimum: MINIMUM, amountDue: Math.max(MINIMUM, billableStudents * RATE) };
-};
+const {
+  DAY_MS, TERM_DAYS, RATE, PAY_TO, priceFor, activeUntilOf, accessOf, invalidate,
+} = require('../services/subscriptionAccess.service');
 
 const statusOf = (school, enrolled) => {
   const now = Date.now();
-  const pilotEnds = school.subscription?.pilotEndsAt
-    ? new Date(school.subscription.pilotEndsAt).getTime()
-    : new Date(school.createdAt).getTime() + TERM_DAYS * DAY_MS;
+  const activeUntil = activeUntilOf(school);
   const paidUntil = school.subscription?.paidUntil ? new Date(school.subscription.paidUntil).getTime() : 0;
-  const activeUntil = Math.max(pilotEnds, paidUntil);
   const status = now > activeUntil ? 'due' : paidUntil >= now ? 'active' : 'pilot';
   const declaredStudents = school.subscription?.declaredStudents || 0;
   const price = priceFor(declaredStudents, enrolled);
+  const { locked, graceEndsAt, graceDays, extendedUntil } = accessOf(school, now);
   return {
     status, activeUntil: new Date(activeUntil), daysLeft: Math.ceil((activeUntil - now) / DAY_MS),
+    locked, graceEndsAt, graceDays, extendedUntil,
     declaredStudents, enrolledStudents: enrolled, ...price, pricePerTerm: price.amountDue, payTo: PAY_TO,
   };
 };
@@ -113,7 +99,7 @@ const recordPayment = async (req, res) => {
 
     });
     await School.updateOne({ _id: school._id }, { $set: { 'subscription.paidUntil': coversUntil } });
-
+    invalidate(school._id)
     const fresh = await School.findById(school._id).select('subscription createdAt');
     return created(res, { payment, subscription: statusOf(fresh, snapshot.enrolledStudents) }, 'Subscription payment recorded');
   } catch (err) {
@@ -122,4 +108,29 @@ const recordPayment = async (req, res) => {
   }
 };
 
-module.exports = { mySubscription, setDeclaredStudents, listSubscriptions, recordPayment };
+const extendAccess = async (req, res) => {
+  try {
+    const days = req.body.days === undefined ? 7 : Number(req.body.days);
+    const note = String(req.body.note || '').trim();
+    if (!Number.isInteger(days) || days < 1 || days > 30) return badRequest(res, 'days must be a whole number from 1 to 30');
+    if (!note) return badRequest(res, 'A note explaining the extension is required');
+
+    const school = await School.findById(req.params.schoolId).select('subscription createdAt');
+    if (!school) return notFound(res, 'School not found');
+
+    const current = school.subscription?.extendedUntil ? new Date(school.subscription.extendedUntil).getTime() : 0;
+    const target = new Date(Math.max(Date.now() + days * DAY_MS, current)); // never shortens an existing extension
+    await School.updateOne({ _id: school._id }, { $set: {
+      'subscription.extendedUntil': target, 'subscription.extendedNote': note,
+      'subscription.extendedBy': req.user._id, 'subscription.extendedAt': new Date(),
+    } });
+    invalidate(school._id);
+
+    const [fresh, enrolled] = await Promise.all([
+      School.findById(school._id).select('subscription createdAt'), countEnrolled(school._id),
+    ]);
+    return success(res, { subscription: statusOf(fresh, enrolled) }, `Access extended by ${days} day${days === 1 ? '' : 's'}`);
+  } catch (err) { return error(res, err.message); }
+};
+
+module.exports = { mySubscription, setDeclaredStudents, listSubscriptions, recordPayment, extendAccess };
