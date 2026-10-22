@@ -141,7 +141,8 @@ No service charge, no referral conversion, not withdrawable. Each needs a unique
 ## How EduPay earns
 
 - **Service charge margin** on online payments (service charge minus the gateway's fee).
-- **Subscription** per school per term, recorded by the platform admin. Price = students × ₦300, **never below ₦30,000 per term**. Students billed = the higher of the count the school declared and the number actually enrolled. New schools get a free pilot of 120 days. Schools see a banner as it ends. Nothing is locked.
+- **Subscription** per school per term, recorded by the platform admin. Price = students × ₦300, **never below ₦30,000 per term**. Students billed = the higher of the count the school declared and the number actually enrolled. New schools get a free pilot of 120 days. Schools see a banner as it ends.
+  - **Subscription lock.** A school that has not paid is locked 7 days after its pilot or paid period ends (`SUBSCRIPTION_GRACE_DAYS`). While locked it cannot start new work: enrolling or importing students, creating or assigning fees, creating staff accounts, or recording cash payments. Everything that moves money for parents stays open: parent transfers, webhooks and reconciliation, refunds and overpayment handling, withdrawals, and all reads and reports, plus login and the subscription pages so the school can pay. Recording the school's transfer on the Subscriptions page reopens it immediately, and the platform admin can also grant 1 to 30 extra days with a written reason. Platform admins are never locked out.
   - The ₦30,000 minimum is the starting price. It will be raised as more schools join, and schools will be told in advance by email and on their dashboard before any increase takes effect (planned, see Roadmap).
 - **Referral rewards** are paid only from real online margin (see below), so they never cost more than they earn.
 
@@ -185,7 +186,7 @@ backend/src/
 ├── services/      reconciliation, bulkEnroll, virtualAccount, paymentInstructions, platformFee,
 │                  earlyPaymentDiscount, fee, revenue, withdrawal, referral, vtu,
 │                  nomba, paystack (+ mappers), transaction (hourly sync)
-├── middleware/    auth, roles, platform admin, webhook signature verification
+├── middleware/    auth, roles, platform admin, subscription lock, webhook signature verification
 └── routes/, sockets/, jobs/
 
 frontend/src/
@@ -266,6 +267,7 @@ Sandbox accounts are simulated and cannot receive real money. Set `NODE_ENV=prod
 | `WEBHOOK_SKIP_VERIFY` | Development only: skips signature checks. Ignored in production |
 | `VTPASS_BASE_URL`, `VTPASS_API_KEY`, `VTPASS_SECRET_KEY`, `VTPASS_PUBLIC_KEY` | Airtime and data rewards |
 | `BULK_PROVISION_DELAY_MS` | Optional: pause between students when virtual accounts are created after a bulk import (default 1500) |
+| `SUBSCRIPTION_GRACE_DAYS` | Days after the pilot or paid period ends before the lock starts (default 7) |
 | `SUBSCRIPTION_PER_STUDENT`, `SUBSCRIPTION_MINIMUM` | Subscription rate per student per term (default ₦300) and the minimum per school per term (default ₦30,000) |
 | `REFERRAL_REWARD_AMOUNT`, `REFERRAL_UNLOCK_MARGIN`, `REFERRAL_MAX_REWARDS_PER_MONTH` | Optional referral tuning |
 

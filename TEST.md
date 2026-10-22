@@ -1,6 +1,6 @@
 # EduPay test plan
 
-Work through the parts in order. Parts A to F, H, K and L need **no gateway**. Parts G, I and J need real online money and are blocked until Nomba or Paystack works. Tick each box as it passes. Write down anything that does not match the "Expect" column.
+Work through the parts in order. Parts A to F, H, K, L and M need **no gateway**. Parts G, I and J need real online money and are blocked until Nomba or Paystack works. Tick each box as it passes. Write down anything that does not match the "Expect" column.
 
 ## Before you start
 
@@ -123,6 +123,29 @@ Log in as the parent → My Children → link Chidi (student ID + school ID).
 | H7 | Declare 200 students | Billed ₦60,000 (200 × ₦300) | [ ] |
 | H8 | Declare fewer students than are enrolled | Billed on the enrolled count, not the declared one | [ ] |
 
+## Part M: Subscription lock (needs no gateway)
+
+Use a test school, never a real customer. The dates are set from the backend folder with `node src/scripts/setPilotEnd.js "<school name>" [--days-ago N] [--restore] --yes` (without `--yes` it only shows what would change). The server caches lock status for up to a minute, so wait a minute or restart the backend after changing dates.
+
+| # | Do | Expect | ✓ |
+|---|---|---|---|
+| M1 | Run the script with `--days-ago 3 --yes` | School is in its grace period: the banner says overdue and gives the date new work pauses; everything still works | [ ] |
+| M2 | Run it with `--yes` (10 days ago) | School is **LOCKED** | [ ] |
+| M3 | As the admin, try to enroll a student, import a file, create a fee structure, assign a fee, create a bursar, and (as the bursar) record a cash payment | Each is refused with the message "Your EduPay subscription ended on …", the amount due and the bank details | [ ] |
+| M4 | Still locked: open Students, Reports, a student's detail, Overpayments, Revenue, Settings | All load normally | [ ] |
+| M5 | Still locked: edit a student, adjust an existing fee, deactivate a student, approve a refund, use Sync Transactions | All still work | [ ] |
+| M6 | Still locked: a parent logs in, views the balance and (with a gateway) transfers into the student's account | The parent side works and the payment reconciles | [ ] |
+| M7 | Locked school's Settings page and banner | Both explain the lock and show the amount and where to pay | [ ] |
+| M8 | Platform admin: Subscriptions page | The school shows **LOCKED** with an Extend button | [ ] |
+| M9 | Click Extend, give 3 days and a reason | School shows "extended to …"; M3 actions work again; after the extension ends it locks again | [ ] |
+| M10 | Run the script with `--yes` again, then record a payment of the amount due | The school reopens at once, without waiting a minute; the banner disappears | [ ] |
+| M11 | Extend with no reason, with 0 days, and with 31 days | Each is refused | [ ] |
+| M12 | A non-platform admin calls `POST /api/subscriptions/schools/<id>/extend` | 403 | [ ] |
+| M13 | The platform admin's own login on a locked school | Never blocked | [ ] |
+| M14 | Run the script with `--restore --yes` | Pilot ends in 120 days again; school is open | [ ] |
+
+---
+
 ## Part I: Online payments (when a gateway works)
 
 | # | Do | Expect | ✓ |
@@ -200,3 +223,4 @@ Log in as the admin → **People** in the sidebar. Create a second school with i
 | J Withdrawal | | | |
 | K Security | | | |
 | L School people | | | |
+| M Subscription lock | | | |
