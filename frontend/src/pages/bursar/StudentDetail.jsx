@@ -23,6 +23,20 @@ export default function BursarStudentDetail() {
   const [manualForm,  setManualForm]  = useState({ amountPaid: '', reference: '', method: 'Cash', narration: '' })
   const [paying,      setPaying]      = useState(false)
   const [payErr,      setPayErr]      = useState('')
+  const [adj,         setAdj]         = useState(null)
+  const [adjForm,     setAdjForm]     = useState({ newAmount: '', reason: '' })
+  const [adjErr,      setAdjErr]      = useState('')
+  const [adjSaving,   setAdjSaving]   = useState(false)
+
+  const openAdjust = (a) => { setAdj(a); setAdjForm({ newAmount: String(a.amountExpected ?? ''), reason: '' }); setAdjErr('') }
+  const submitAdjust = async (e) => {
+    e.preventDefault(); setAdjSaving(true); setAdjErr('')
+    try {
+      await feeAPI.adjustAssignment(adj._id, { newAmountExpected: Number(adjForm.newAmount), reason: adjForm.reason })
+      toast('Fee adjusted'); setAdj(null); load()
+    } catch (err) { setAdjErr(err.response?.data?.message || 'Could not adjust fee') }
+    finally { setAdjSaving(false) }
+  }
 
   const load = async () => {
     setLoading(true)
@@ -219,6 +233,9 @@ export default function BursarStudentDetail() {
                     <p className="text-xs text-gray-400">of {formatCurrency(a.amountExpected)}</p>
                   </div>
                   <StatusBadge status={st} />
+                  {st !== 'paid' && st !== 'overpaid' && (
+                    <button type="button" className="text-xs text-blue-600 hover:underline" onClick={() => openAdjust(a)}>Adjust</button>
+                  )}
                 </div>
               </div>
             )
@@ -307,6 +324,29 @@ export default function BursarStudentDetail() {
             <button type="submit" className="btn-primary" disabled={paying}>
               {paying ? <Spinner size="sm" /> : 'Record Payment'}
             </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Adjust fee (bursars can reduce only; every change is audit-logged) */}
+      <Modal open={!!adj} onClose={() => setAdj(null)} title={`Adjust fee: ${student?.fullName || ''}`} size="sm">
+        {adjErr && <div className="mb-4"><Alert type="error" message={adjErr} /></div>}
+        <form onSubmit={submitAdjust} className="space-y-4">
+          <div className="bg-amber-50 border border-amber-100 rounded-lg p-3 text-xs text-amber-700">
+            Bursars can lower a fee but not raise it. The change is recorded with your name and the reason below.
+            {adj?.totalPaid > 0 && ` ${formatCurrency(adj.totalPaid)} has already been paid.`}
+          </div>
+          <Field label="New amount (₦)" required>
+            <input type="number" min={1} max={adj?.amountExpected ? adj.amountExpected - 1 : undefined} className="input" required
+              value={adjForm.newAmount} onChange={e => setAdjForm(p => ({ ...p, newAmount: e.target.value }))} />
+          </Field>
+          <Field label="Reason" required>
+            <input className="input" placeholder="e.g. Approved hardship, parent applied on 12 Sept" required minLength={5}
+              value={adjForm.reason} onChange={e => setAdjForm(p => ({ ...p, reason: e.target.value }))} />
+          </Field>
+          <div className="flex gap-3 justify-end">
+            <button type="button" className="btn-secondary" onClick={() => setAdj(null)}>Cancel</button>
+            <button type="submit" className="btn-primary" disabled={adjSaving}>{adjSaving ? <Spinner size="sm" /> : 'Save'}</button>
           </div>
         </form>
       </Modal>

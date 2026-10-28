@@ -1,5 +1,5 @@
 // src/controllers/revenue.controller.js
-const { getPlatformRevenue, getSchoolRevenue, getAllSchoolsRevenue } = require('../services/revenue.service');
+const { getPlatformRevenue, getSchoolRevenue } = require('../services/revenue.service');
 const { success, error, forbidden } = require('../utils/apiResponse');
 
 // GET /api/revenue/platform — platform admin only (route-gated)
@@ -11,21 +11,13 @@ const platformRevenue = async (req, res) => {
   } catch (err) { return error(res, err.message); }
 };
 
-// GET /api/revenue/schools — every school's revenue at a glance, platform admin only
-const allSchoolsRevenue = async (req, res) => {
-  try {
-    const schools = await getAllSchoolsRevenue();
-    return success(res, { schools });
-  } catch (err) { return error(res, err.message); }
-};
-
 // GET /api/revenue/schools/:schoolId?term=&academicSession=
-// A school's own admin/bursar can see their own school; platform admin can see any.
+// Only a school's own admin/bursar can see that school's revenue. Platform admin cannot.
 const oneSchoolRevenue = async (req, res) => {
   try {
     const { schoolId } = req.params;
     const isStaffOfSchool = ['admin', 'bursar'].includes(req.user.role) && req.user.schoolId?.toString() === schoolId;
-    if (!isStaffOfSchool && !req.platformAdmin) {
+    if (!isStaffOfSchool) {
       return forbidden(res, 'You can only view your own school\'s revenue');
     }
     const { term, academicSession } = req.query;
@@ -34,4 +26,4 @@ const oneSchoolRevenue = async (req, res) => {
   } catch (err) { return error(res, err.message); }
 };
 
-module.exports = { platformRevenue, allSchoolsRevenue, oneSchoolRevenue };
+module.exports = { platformRevenue, oneSchoolRevenue };

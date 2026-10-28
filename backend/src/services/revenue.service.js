@@ -113,30 +113,6 @@ const getSchoolRevenue = async (schoolId, { term, academicSession } = {}) => {
   };
 };
 
-// ── Every school's revenue, for the platform overview ────────────────────────
-const getAllSchoolsRevenue = async () => {
-  return Payment.aggregate([
-    { $group: {
-        _id: '$schoolId',
-        totalRevenue:     { $sum: '$netAmountForSchool' },
-        totalCollected:   { $sum: '$amountPaid' },
-        totalPlatformFee: { $sum: '$platformFee' },
-        totalGatewayFee:  { $sum: '$gatewayFee' },
-        paymentCount:     { $sum: 1 },
-    } },
-    { $lookup: { from: 'schools', localField: '_id', foreignField: '_id', as: 'school' } },
-    { $unwind: '$school' },
-    { $project: {
-        _id: 0,
-        schoolId:   '$_id',
-        schoolName: '$school.name',
-        totalRevenue: 1, totalCollected: 1, totalPlatformFee: 1, totalGatewayFee: 1, paymentCount: 1,
-        netMargin: { $subtract: ['$totalPlatformFee', '$totalGatewayFee'] },
-    } },
-    { $sort: { totalRevenue: -1 } },
-  ]);
-};
-
 const getWithdrawnTotal = async ({ type, schoolId = null }) => {
   const match = { type, status: { $in: ['completed', 'processing'] } };
   if (schoolId) match.schoolId = oid(schoolId);
@@ -154,4 +130,4 @@ const getWithdrawableTotals = async ({ type, schoolId = null }) => {
   const [p, withdrawn] = await Promise.all([sumPlatform({}), getWithdrawnTotal({ type: 'platform' })]);
   return { earned: p.totalPlatformFee - p.totalGatewayFee, withdrawn };
 };
-module.exports = { getPlatformRevenue, getSchoolRevenue, getAllSchoolsRevenue, getWithdrawnTotal, getWithdrawableTotals };
+module.exports = { getPlatformRevenue, getSchoolRevenue, getWithdrawnTotal, getWithdrawableTotals };

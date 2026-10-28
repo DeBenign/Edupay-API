@@ -1,4 +1,5 @@
 // src/services/reconciliation.service.js
+const notify = require('./notify.service');
 const mongoose = require('mongoose');
 const Payment       = require('../models/Payment');
 const FeeAssignment = require('../models/FeeAssignment');
@@ -198,10 +199,12 @@ const processPayment = async ({
   // 7. Real-time event
   if (io) emitReconciliationEvent(io, student.schoolId.toString(), result);
 
-  // 8. Notifications (non-blocking)
-  createPaymentNotifications(result, student).catch((err) =>
+  // 8. Notifications. Awaited on purpose: on serverless hosts the function can be frozen the moment
+  //    the response is sent, so background work would be lost. Each step is bounded and never throws.
+  await createPaymentNotifications(result, student).catch((err) =>
     console.error('⚠️  Notification error:', err.message)
   );
+  await notify.paymentReceived(result, student); // email the parent a receipt
 
   // 9. Log
   const icons = { exact: '✅', underpayment: '⚠️ ', overpayment: '🔁' };

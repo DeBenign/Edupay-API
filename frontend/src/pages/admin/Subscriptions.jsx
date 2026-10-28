@@ -65,7 +65,7 @@ export default function Subscriptions() {
           <div key={s.schoolId} className="flex items-center justify-between px-5 py-3 border-b border-gray-50 text-sm">
             <div>
               <p className="font-semibold text-gray-900">{s.name}</p>
-              <p className="text-xs text-gray-400">{s.declaredStudents} declared · {s.enrolledStudents} enrolled · bills {s.billableStudents} · {s.phone || s.email}</p>
+              <p className="text-xs text-gray-400">{s.enrolledStudents} enrolled · bills {s.billableStudents} · {s.phone || s.email}</p>
             </div>
             <div className="flex items-center gap-4">
                <span className={stateOf(s).cls}>

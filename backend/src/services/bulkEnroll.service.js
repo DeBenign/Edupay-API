@@ -4,6 +4,7 @@
 const Student = require('../models/Student');
 const { provisionStudentVirtualAccount } = require('./virtualAccount.service');
 const { generateLinkCode, linkCodeExpiry } = require('../utils/linkCode');
+const { trackPeak } = require('./subscriptionAccess.service');
 
 const MAX_ROWS = 500;
 const GENDERS = { m: 'male', male: 'male', f: 'female', female: 'female' };
@@ -112,6 +113,8 @@ const runQueue = async () => {
 };
 
 const enqueueProvisioning = (students) => {
+  // Serverless: a background queue is cut off when the response is sent. /api/cron/provision picks these students up instead.
+  if (process.env.VERCEL) return;
   queue.push(...students);
   setImmediate(runQueue);
 };
@@ -139,8 +142,9 @@ const commitBulk = async (schoolId, rows) => {
     inserted = present;
   }
 
+  trackPeak(schoolId);
   enqueueProvisioning(inserted);
-  return { createdCount: inserted.length, failedCount: failed.length, failed: failed.slice(0, 200), provisioning: 'background' };
+  return { createdCount: inserted.length, failedCount: failed.length, failed: failed.slice(0, 200), provisioning: process.env.VERCEL ? 'scheduled' : 'background' };
 };
 
 module.exports = { MAX_ROWS, validateRows, parseDob, previewBulk, commitBulk, enqueueProvisioning };

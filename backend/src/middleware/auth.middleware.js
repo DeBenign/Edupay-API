@@ -3,6 +3,8 @@ const jwt  = require('jsonwebtoken');
 const User = require('../models/User');
 const { env } = require('../config/env');
 const { unauthorized } = require('../utils/apiResponse');
+const { gateFor } = require('../services/schoolApproval.service');
+const emailVerification = require('../services/emailVerification.service');
 
 const ALLOWED_WHILE_PENDING = new Set(['GET /api/auth/me', 'PATCH /api/auth/change-password']);
 
@@ -22,6 +24,9 @@ const protect = async (req, res, next) => {
     }
     const user = await User.findById(decoded.id).select('-password');
     if (!user || !user.isActive) return unauthorized(res, 'User account not found or deactivated.');
+    if (user.passwordChangedAt && decoded.iat < Math.floor(new Date(user.passwordChangedAt).getTime() / 1000)) {
+      return unauthorized(res, 'Your password was changed. Please sign in again.');
+    }
     if (user.mustChangePassword) {
       const path = req.originalUrl.split('?')[0].replace(/\/+$/, '');
       if (!ALLOWED_WHILE_PENDING.has(`${req.method} ${path}`)) {
@@ -32,6 +37,12 @@ const protect = async (req, res, next) => {
         });
       }
     }
+    // Operational access needs an approved school (default-deny; see schoolApproval.service)
+    const path = req.originalUrl.split('?')[0].replace(/\/+$/, '');
+    const unverified = emailVerification.gateFor(user, req.method, path);
+    if (unverified) return res.status(403).json(unverified);
+    const blocked = await gateFor(user, req.method, path);
+    if (blocked) return res.status(403).json(blocked);
     req.user = user;
     next();
   } catch (err) {

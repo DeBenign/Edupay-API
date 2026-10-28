@@ -18,7 +18,7 @@ router.patch('/structures/:id',       protect, admin, updateFeeStructure);
 router.post('/assign',                protect, staff, requireActiveSubscription, assignFeeToStudent);
 router.post('/assign-class',          protect, staff, requireActiveSubscription, assignFeeToClass);
 router.get('/assignments/:studentId', protect, authorize('admin','bursar','parent'), getStudentFeeAssignments);
-router.patch('/assignments/:id/adjust', protect, admin, adjustFeeAmount);
+router.patch('/assignments/:id/adjust', protect, staff, adjustFeeAmount);
 router.post('/assign-custom', protect, staff, requireActiveSubscription, addFeeToStudent);
 
 module.exports = router;

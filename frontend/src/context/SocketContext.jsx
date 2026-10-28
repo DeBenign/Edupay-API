@@ -11,7 +11,7 @@ export const SocketProvider = ({ children }) => {
   const [connected, setConnected] = useState(false)
 
   useEffect(() => {
-    if (!user) return
+    if (!user || import.meta.env.VITE_DISABLE_SOCKET === 'true') return
 
     const socket = io(import.meta.env.VITE_SOCKET_URL || window.location.origin, {
       transports: ['websocket'],

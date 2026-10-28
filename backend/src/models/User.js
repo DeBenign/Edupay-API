@@ -12,6 +12,19 @@ const userSchema = new mongoose.Schema({
   phone:       { type: String, trim: true },
   isActive:    { type: Boolean, default: true },
   mustChangePassword: { type: Boolean, default: false },
+  // Set when a school administrator accepts how EduPay pricing, privacy and subscription work
+  termsAcceptedAt: { type: Date, default: null },
+  // Email verification. No default on purpose: accounts created before this feature (undefined) count as verified.
+  emailVerified:   { type: Boolean },
+  emailVerifiedAt: { type: Date },
+  emailVerifySentAt:    { type: Date },
+  emailVerifyTokenHash: { type: String, select: false },
+  emailVerifyExpires:   { type: Date,   select: false },
+  // Password reset by email (single-use, 1 hour, hashed at rest)
+  passwordResetTokenHash: { type: String, select: false },
+  passwordResetExpires:   { type: Date,   select: false },
+  passwordResetSentAt:    { type: Date },
+  passwordChangedAt:      { type: Date },   // sessions issued before this are signed out
   lastLoginAt: { type: Date, default: null },
   // Personal code, shared to refer a NEW school. The reward is claimed from the user's own dashboard.
   referralCode: { type: String, unique: true, sparse: true, uppercase: true },
@@ -37,6 +50,10 @@ userSchema.methods.comparePassword = async function (candidate) {
 userSchema.methods.toJSON = function () {
   const obj = this.toObject();
   delete obj.password;
+  delete obj.emailVerifyTokenHash;
+  delete obj.emailVerifyExpires;
+  delete obj.passwordResetTokenHash;
+  delete obj.passwordResetExpires;
   return obj;
 };
 

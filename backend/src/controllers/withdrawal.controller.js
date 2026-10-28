@@ -45,7 +45,7 @@ const schoolWithdrawalHistory = async (req, res) => {
   try {
     const { schoolId } = req.params;
     const staff = ['admin', 'bursar'].includes(req.user.role) && req.user.schoolId?.toString() === schoolId;
-    if (!staff && !req.platformAdmin) return forbidden(res, 'You can only view your own school\'s withdrawals');
+    if (!staff) return forbidden(res, 'You can only view your own school\'s withdrawals');
     const withdrawals = await Withdrawal.find({ type: 'school', schoolId }).sort({ createdAt: -1 });
     return success(res, { withdrawals });
   } catch (err) { return error(res, err.message); }

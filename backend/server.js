@@ -27,6 +27,7 @@ const boot = async () => {
   // Start cron jobs
   require('./src/jobs/syncTransactions.job');
   require('./src/jobs/feeReminder.job');
+  require('./src/jobs/subscriptionReminder.job');
 
   server.listen(env.port, () => {
     console.log(`\n🚀 EduPay API running on port ${env.port} [${env.nodeEnv}]`);

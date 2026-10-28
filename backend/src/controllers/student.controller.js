@@ -9,6 +9,7 @@ const { paginate }  = require('../utils/paginate');
 const { success, created, badRequest, notFound, error, forbidden, paginated } = require('../utils/apiResponse');
 const { generateLinkCode, linkCodeExpiry, formatLinkCode } = require('../utils/linkCode');
 const { MAX_ROWS, previewBulk, commitBulk } = require('../services/bulkEnroll.service');
+const { trackPeak } = require('../services/subscriptionAccess.service');
 
 
 const enrollStudent = async (req, res) => {
@@ -21,6 +22,7 @@ const enrollStudent = async (req, res) => {
     const existing = await Student.findOne({ schoolId, studentId });
     if (existing) return badRequest(res, `Student ID "${studentId}" already exists in this school`);
     const student = await Student.create({ schoolId, fullName, studentId, class: cls, gender, ...(dateOfBirth && { dateOfBirth }), ...(parentId && { parentId }) });
+    trackPeak(schoolId);
     // enrollStudent — inside student.controller.js
   let finalStudent = student, accountWarning = null;
   try {
@@ -138,6 +140,7 @@ const deactivateStudent = async (req, res) => {
     const student = await Student.findById(req.params.id);
     if (!student) return notFound(res, 'Student not found');
     if (student.schoolId.toString() !== req.user.schoolId?.toString()) return forbidden(res, 'Access denied');
+    await trackPeak(student.schoolId); // record the count before it drops
     student.isActive = false;
     await student.save();
     return success(res, null, 'Student deactivated. Payment records preserved.');
@@ -242,6 +245,7 @@ const promoteClass = async (req, res) => {
     if (preview) return success(res, { preview: true, ...summary }, 'Preview only. No changes made.');
 
     const ids = toProcess.map((s) => s._id);
+    if (graduate) await trackPeak(schoolId); // record the count before graduates leave
     await Student.updateMany(
       { _id: { $in: ids }, schoolId },
       { $set: graduate ? { isActive: false } : { class: finalClass } }

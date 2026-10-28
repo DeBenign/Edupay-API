@@ -16,30 +16,19 @@ export default function AdminSettings() {
   const [loading,  setLoading]  = useState(true)
   const [saving,   setSaving]   = useState(false)
   const [err,      setErr]      = useState('')
-  const [form,     setForm]     = useState({ name: '', address: '', email: '', phone: '', referralCode: '' })
+  const [form,     setForm]     = useState({ name: '', address: '', email: '', phone: '', applicantPosition: '', referralCode: '' })
   const [pwForm,   setPwForm]   = useState({ currentPassword: '', newPassword: '', confirmPassword: '' })
   const [pwErr,    setPwErr]    = useState('')
   const [pwSaving, setPwSaving] = useState(false)
-  const [studentCount, setStudentCount] = useState('')
 
-  const loadSub = () => subscriptionAPI.mine().then(r => {
-  setSub(r.data.data.subscription)
-  setStudentCount(String(r.data.data.subscription.declaredStudents || ''))
-}).catch(() => {})
-
-const saveStudentCount = async () => {
-  try {
-    const res = await subscriptionAPI.setStudents({ declaredStudents: Number(studentCount) })
-    setSub(res.data.data.subscription); toast('Student count saved')
-  } catch (er) { toast(er.response?.data?.message || 'Could not save', 'error') }
-}
+  const loadSub = () => subscriptionAPI.mine().then(r => setSub(r.data.data.subscription)).catch(() => {})
 
   useEffect(() => {
     schoolAPI.getmine()
       .then(res => {
         const s = res.data.data.school
         setSchool(s)
-        setForm({ name: s.name, address: s.address, email: s.email, phone: s.phone || '', referralCode: '' })
+        setForm({ name: s.name, address: s.address, email: s.email, phone: s.phone || '', applicantPosition: s.applicantPosition || '', referralCode: '' })
         loadSub()
       })
       .catch(() => {})
@@ -56,9 +45,10 @@ const saveStudentCount = async () => {
       } else {
         const res = await schoolAPI.create({ ...profile, ...(referralCode.trim() && { referralCode: referralCode.trim() }) })
         setSchool(res.data.data.school)
-        updateUser({ schoolId: res.data.data.school._id })
-        loadSub()
-        toast('School created successfully!')
+        // Reload the session: the school now exists but is awaiting EduPay approval
+        const me = await authAPI.me()
+        updateUser(me.data.data.user)
+        toast('Application submitted. EduPay will verify your school.')
       }
     } catch (er) {
       setErr(er.response?.data?.message || 'Failed to save school')
@@ -114,7 +104,7 @@ const saveStudentCount = async () => {
           <div className="w-9 h-9 bg-blue-50 rounded-lg flex items-center justify-center">
             <Building2 size={18} className="text-blue-600" />
           </div>
-          <h2 className="font-semibold text-gray-900">{school ? 'School Profile' : 'Create Your School'}</h2>
+          <h2 className="font-semibold text-gray-900">{school ? 'School Profile' : 'Register Your School'}</h2>
         </div>
 
         {err && <div className="mb-4"><Alert type="error" message={err} /></div>}
@@ -131,8 +121,11 @@ const saveStudentCount = async () => {
           <Field label="Address" required>
             <input className="input" placeholder="12 School Road, Abuja" required value={form.address} onChange={set('address')} />
           </Field>
-          <Field label="Phone">
-            <input className="input" placeholder="09011223344" value={form.phone} onChange={set('phone')} />
+          <Field label={school ? 'Phone' : 'School phone (EduPay will call this number)'} required={!school}>
+            <input className="input" placeholder="09011223344" required={!school} value={form.phone} onChange={set('phone')} />
+          </Field>
+          <Field label="Your position at the school" required={!school}>
+            <input className="input" placeholder="Proprietor, Principal, Bursar..." required={!school} value={form.applicantPosition} onChange={set('applicantPosition')} />
           </Field>
           {!school && (
             <Field label="Referral code (optional)">
@@ -142,7 +135,7 @@ const saveStudentCount = async () => {
           )}
           <div className="flex justify-end">
             <button type="submit" className="btn-primary" disabled={saving}>
-              {saving ? <Spinner size="sm" /> : school ? 'Save Changes' : 'Create School'}
+              {saving ? <Spinner size="sm" /> : school ? 'Save Changes' : 'Submit for approval'}
             </button>
           </div>
         </form>
@@ -201,19 +194,14 @@ const saveStudentCount = async () => {
           {sub.locked && 'Your subscription has ended. Adding students, fees, staff and cash payments is paused until payment is recorded.'}
         </p>
         <div className="bg-gray-50 rounded-lg p-3 text-sm space-y-1">
-          <div className="flex justify-between"><span className="text-gray-500">Students you declared</span><span>{sub.declaredStudents}</span></div>
           <div className="flex justify-between"><span className="text-gray-500">Students enrolled</span><span>{sub.enrolledStudents}</span></div>
-          <div className="flex justify-between"><span className="text-gray-500">Billed for (the higher)</span><span>{sub.billableStudents}</span></div>
+          <div className="flex justify-between"><span className="text-gray-500">Billed for (highest active count this term)</span><span>{sub.billableStudents}</span></div>
           <div className="flex justify-between font-semibold"><span>Per term</span><span>{formatCurrency(sub.amountDue)}</span></div>
           <p className="text-xs text-gray-400">{sub.billableStudents} × {formatCurrency(sub.ratePerStudent)}, minimum {formatCurrency(sub.minimum)}</p>
         </div>
-        <div className="flex gap-2">
-          <input type="number" min="0" className="input flex-1" placeholder="Total students in your school"
-            value={studentCount} onChange={e => setStudentCount(e.target.value)} />
-          <button className="btn-secondary" onClick={saveStudentCount}>Save</button>
-        </div>
         <p className="text-xs text-gray-500">
-          Pay to {sub.payTo.bank} {sub.payTo.accountNumber} ({sub.payTo.accountName}). Use your school name as the reference.
+          {sub.payTo ? `Pay to ${sub.payTo.bank} ${sub.payTo.accountNumber} (${sub.payTo.accountName}). Use your school name as the reference.` : 'Contact EduPay for the payment details.'}
+          {' '}Billing is automatic from the students enrolled in EduPay. You do not need to declare a count.
         </p>
       </div>
     )}

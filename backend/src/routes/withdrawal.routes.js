@@ -3,7 +3,7 @@ const express = require('express');
 const router = express.Router();
 const { protect } = require('../middleware/auth.middleware');
 const { authorize } = require('../middleware/role.middleware');
-const { requirePlatformAdmin, tagPlatformAdmin } = require('../middleware/platformAdmin.middleware');
+const { requirePlatformAdmin } = require('../middleware/platformAdmin.middleware');
 const {
   withdrawPlatformRevenue,
   withdrawSchoolRevenue,
@@ -15,7 +15,7 @@ router.use(protect);
 
 router.post('/platform', requirePlatformAdmin, withdrawPlatformRevenue);
 router.post('/schools/:schoolId', authorize('admin', 'bursar'), withdrawSchoolRevenue);
-router.get('/schools/:schoolId',  authorize('admin', 'bursar'), tagPlatformAdmin, schoolWithdrawalHistory);
+router.get('/schools/:schoolId',  authorize('admin', 'bursar'), schoolWithdrawalHistory);
 router.get('/platform', requirePlatformAdmin, platformWithdrawalHistory);
 
 module.exports = router;

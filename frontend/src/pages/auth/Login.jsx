@@ -71,6 +71,7 @@ export default function Login({ defaultRole }) {
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label className="text-sm font-medium text-gray-700">Password</label>
+                <Link to="/forgot-password" className="text-xs text-blue-600 hover:underline">Forgot password?</Link>
               </div>
               <div className="relative">
                 <input type={show ? 'text' : 'password'} className="input pr-10" placeholder="••••••••" required

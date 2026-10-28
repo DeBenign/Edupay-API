@@ -3,6 +3,10 @@ import api from './axios'
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 export const authAPI = {
+  forgotPassword: (email) => api.post('/auth/forgot-password', { email }),
+  resetPassword:  (token, password) => api.post('/auth/reset-password', { token, password }),
+  verifyEmail: (token) => api.post('/auth/verify-email', { token }),
+  resendVerification: () => api.post('/auth/resend-verification'),
   register:      (data) => api.post('/auth/register', data),
   login:         (data) => api.post('/auth/login', data),
   me:            ()     => api.get('/auth/me'),
@@ -15,6 +19,16 @@ export const schoolAPI = {
   create:  (data) => api.post('/schools', data),
   getmine: ()     => api.get('/schools/me'),
   update:  (id, data) => api.patch(`/schools/${id}`, data),
+  resubmit: () => api.post('/schools/my/resubmit'),
+  // EduPay owner only
+  applications: (status) => api.get('/schools/applications', { params: status ? { status } : {} }),
+  unverifiedSignups: (role) => api.get('/schools/signups/unverified', { params: { role } }),
+  verifyEmailManually: (userId, note) => api.post(`/schools/signups/${userId}/verify-email`, { note }),
+  approve:     (id, data) => api.post(`/schools/${id}/approve`, data),
+  reject:      (id, data) => api.post(`/schools/${id}/reject`, data),
+  requestInfo: (id, data) => api.post(`/schools/${id}/request-info`, data),
+  suspend:     (id, data) => api.post(`/schools/${id}/suspend`, data),
+  reinstate:   (id, data) => api.post(`/schools/${id}/reinstate`, data),
 }
 
 // ─── Students ─────────────────────────────────────────────────────────────────
@@ -94,7 +108,6 @@ export const notificationAPI = {
 export const revenueAPI = {
   school:   (schoolId, params) => api.get(`/revenue/schools/${schoolId}`, { params }),
   platform: (params)           => api.get('/revenue/platform', { params }),
-  allSchools:()                => api.get('/revenue/schools'),
 }
 
 // ─── Withdrawals ──────────────────────────────────────────────────────────────
@@ -118,7 +131,6 @@ export const subscriptionAPI = {
   mine:    ()               => api.get('/subscriptions/mine'),
   schools: ()               => api.get('/subscriptions/schools'),
   record:  (schoolId, data) => api.post(`/subscriptions/schools/${schoolId}/payments`, data),
-  setStudents: (data) => api.patch('/subscriptions/declared-students', data),
   extend:  (schoolId, data) => api.post(`/subscriptions/schools/${schoolId}/extend`, data),
 
 }

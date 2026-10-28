@@ -83,9 +83,7 @@ const runReconciliation = async ({ fields, webhookLog, io }) => {
 };
 
 // ─── Live handler factory (ACK first, then process) ──────────────────────────
-const makeWebhookHandler = ({ creditEvents, extract, signatureHeader, label, isRelevant }) => async (req, res) => {
-  res.status(200).json({ received: true });
-
+const makeEventProcessor = ({ creditEvents, extract, signatureHeader, label, isRelevant }) => async (req) => {
   const payload   = req.body;
   const eventType = payload?.event_type || payload?.event || 'unknown'; // Nomba: event_type, Paystack: event
 
@@ -127,6 +125,20 @@ const makeWebhookHandler = ({ creditEvents, extract, signatureHeader, label, isR
     webhookLog,
     io: req.app.locals.io || null,
   });
+};
+
+// Long-running host: acknowledge first, then process (gateways get a fast reply).
+// Serverless (Vercel): the function can be frozen the moment the response is sent, which would lose the
+// payment, so process first and acknowledge after. Duplicates are safe: processing is idempotent by reference.
+const makeWebhookHandler = (config) => {
+  const processEvent = makeEventProcessor(config);
+  return async (req, res) => {
+    const ack = () => { if (!res.headersSent) res.status(200).json({ received: true }); };
+    if (!process.env.VERCEL) ack();
+    try { await processEvent(req); }
+    catch (err) { console.error(`❌ ${config.label} webhook handler failed:`, err.message); }
+    finally { ack(); }
+  };
 };
 
 const handleNombaWebhook = makeWebhookHandler({

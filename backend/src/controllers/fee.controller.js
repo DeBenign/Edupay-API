@@ -2,6 +2,7 @@
 const FeeStructure  = require('../models/FeeStructure');
 const FeeAssignment = require('../models/FeeAssignment');
 const Student       = require('../models/Student');
+const AuditLog      = require('../models/AuditLog');
 const { success, created, badRequest, notFound, error, forbidden } = require('../utils/apiResponse');
 
 const createFeeStructure = async (req, res) => {
@@ -102,7 +103,7 @@ const adjustFeeAmount = async (req, res) => {
     const { reason } = req.body;
     if (!Number.isFinite(newAmount) || newAmount <= 0)
       return badRequest(res, 'newAmountExpected must be a number greater than 0');
-    if (!reason?.trim()) return badRequest(res, 'reason is required for a manual fee adjustment (audit trail)');
+    if (!reason?.trim() || reason.trim().length < 5) return badRequest(res, 'A reason of at least 5 characters is required for a manual fee adjustment (audit trail)');
 
     const assignment = await FeeAssignment.findById(req.params.id);
     if (!assignment) return notFound(res, 'Fee assignment not found');
@@ -111,6 +112,8 @@ const adjustFeeAmount = async (req, res) => {
       return badRequest(res, 'Cannot adjust an assignment that is already fully paid or overpaid');
 
     const oldAmount = assignment.amountExpected;
+    if (req.user.role === 'bursar' && newAmount >= oldAmount)
+      return forbidden(res, 'Bursars can only reduce a fee. Ask a school admin to raise it.');
     const diff = newAmount - assignment.totalPaid;
 
     assignment.amountExpected = newAmount;
@@ -122,6 +125,14 @@ const adjustFeeAmount = async (req, res) => {
 
     assignment.notes = `${assignment.notes ? assignment.notes + ' | ' : ''}Adjusted by ${req.user.fullName || req.user._id} from ₦${oldAmount} to ₦${newAmount} (${new Date().toISOString()}): ${reason.trim()}`;
     await assignment.save();
+
+    try {
+      await AuditLog.create({
+        actorId: req.user._id, schoolId: assignment.schoolId, targetId: assignment._id, targetType: 'FeeAssignment',
+        action: 'fee_adjust',
+        meta: { studentId: assignment.studentId, oldAmount, newAmount, totalPaid: assignment.totalPaid, reason: reason.trim(), role: req.user.role },
+      });
+    } catch (auditErr) { console.error('❌ Fee adjustment saved but audit log failed:', auditErr.message); }
 
     return success(res, { assignment }, 'Fee amount adjusted successfully');
   } catch (err) { return error(res, err.message); }

@@ -1,10 +1,11 @@
+const notify = require('../services/notify.service');
 const School = require('../models/School');
 const Student = require('../models/Student');
 const SubscriptionPayment = require('../models/SubscriptionPayment');
 const { success, created, badRequest, notFound, error } = require('../utils/apiResponse');
 
 const {
-  DAY_MS, TERM_DAYS, RATE, PAY_TO, priceFor, activeUntilOf, accessOf, invalidate,
+  DAY_MS, TERM_DAYS, RATE, PAY_TO, payToConfigured, priceFor, activeUntilOf, accessOf, invalidate, recordEnrolled, clearCache,
 } = require('../services/subscriptionAccess.service');
 
 const statusOf = (school, enrolled) => {
@@ -12,13 +13,13 @@ const statusOf = (school, enrolled) => {
   const activeUntil = activeUntilOf(school);
   const paidUntil = school.subscription?.paidUntil ? new Date(school.subscription.paidUntil).getTime() : 0;
   const status = now > activeUntil ? 'due' : paidUntil >= now ? 'active' : 'pilot';
-  const declaredStudents = school.subscription?.declaredStudents || 0;
-  const price = priceFor(declaredStudents, enrolled);
+  const peakStudents = school.subscription?.peakStudents || 0;
+  const price = priceFor(enrolled, peakStudents);
   const { locked, graceEndsAt, graceDays, extendedUntil } = accessOf(school, now);
   return {
     status, activeUntil: new Date(activeUntil), daysLeft: Math.ceil((activeUntil - now) / DAY_MS),
     locked, graceEndsAt, graceDays, extendedUntil,
-    declaredStudents, enrolledStudents: enrolled, ...price, pricePerTerm: price.amountDue, payTo: PAY_TO,
+    peakStudents, enrolledStudents: enrolled, ...price, pricePerTerm: price.amountDue, payTo: payToConfigured() ? PAY_TO : null,
   };
 };
 
@@ -27,34 +28,22 @@ const countEnrolled = (schoolId) => Student.countDocuments({ schoolId, isActive:
 const mySubscription = async (req, res) => {
   try {
     if (!req.user.schoolId) return notFound(res, 'No school');
-    const [school, enrolled] = await Promise.all([
-      School.findById(req.user.schoolId).select('subscription createdAt'), countEnrolled(req.user.schoolId),
-    ]);
+    const enrolled = await countEnrolled(req.user.schoolId);
+    await recordEnrolled(req.user.schoolId, enrolled);
+    const school = await School.findById(req.user.schoolId).select('subscription createdAt');
     return success(res, { subscription: statusOf(school, enrolled) });
   } catch { return error(res); }
-};
-
-// Admin: tell EduPay how many students the school has
-const setDeclaredStudents = async (req, res) => {
-  try {
-    const n = Number(req.body.declaredStudents);
-    if (!Number.isInteger(n) || n < 0 || n > 100000) return badRequest(res, 'declaredStudents must be a whole number');
-    if (!req.user.schoolId) return notFound(res, 'No school');
-    await School.updateOne({ _id: req.user.schoolId }, { $set: { 'subscription.declaredStudents': n } });
-    const [school, enrolled] = await Promise.all([
-      School.findById(req.user.schoolId).select('subscription createdAt'), countEnrolled(req.user.schoolId),
-    ]);
-    return success(res, { subscription: statusOf(school, enrolled) }, 'Student count saved');
-  } catch (err) { return error(res, err.message); }
 };
 
 // Platform admin: every school with its status and what it owes
 const listSubscriptions = async (req, res) => {
   try {
-    const [schools, counts] = await Promise.all([
-      School.find({ isActive: true }).select('name email phone subscription createdAt').lean(),
-      Student.aggregate([{ $match: { isActive: true } }, { $group: { _id: '$schoolId', n: { $sum: 1 } } }]),
-    ]);
+    const counts = await Student.aggregate([{ $match: { isActive: true } }, { $group: { _id: '$schoolId', n: { $sum: 1 } } }]);
+    const peakOps = counts.filter((c) => c.n > 0).map((c) => ({
+      updateOne: { filter: { _id: c._id }, update: { $max: { 'subscription.peakStudents': c.n } } },
+    }));
+    if (peakOps.length) { await School.bulkWrite(peakOps); clearCache(); }
+    const schools = await School.find({ isActive: true }).select('name email phone subscription createdAt').lean();
     const byId = new Map(counts.map((c) => [String(c._id), c.n]));
     return success(res, {
       schools: schools.map((s) => {
@@ -98,9 +87,11 @@ const recordPayment = async (req, res) => {
      studentsBilled: snapshot.billableStudents, ratePerStudent: RATE, amountDue: due,
 
     });
-    await School.updateOne({ _id: school._id }, { $set: { 'subscription.paidUntil': coversUntil } });
+    // A new term starts: the peak restarts from today's active count
+    await School.updateOne({ _id: school._id }, { $set: { 'subscription.paidUntil': coversUntil, 'subscription.peakStudents': snapshot.enrolledStudents } });
     invalidate(school._id)
     const fresh = await School.findById(school._id).select('subscription createdAt');
+    await notify.subscriptionPaymentRecorded(school, payment); // never throws
     return created(res, { payment, subscription: statusOf(fresh, snapshot.enrolledStudents) }, 'Subscription payment recorded');
   } catch (err) {
     if (err.code === 11000) return badRequest(res, 'That reference was already recorded');
@@ -133,4 +124,4 @@ const extendAccess = async (req, res) => {
   } catch (err) { return error(res, err.message); }
 };
 
-module.exports = { mySubscription, setDeclaredStudents, listSubscriptions, recordPayment, extendAccess };
+module.exports = { mySubscription, listSubscriptions, recordPayment, extendAccess };

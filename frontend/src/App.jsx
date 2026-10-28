@@ -1,7 +1,7 @@
 // src/App.jsx — Complete wiring of all pages
 // add to the imports at the top
 import Home from './pages/Home'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { AuthProvider, useAuth }   from './context/AuthContext'
 import { SocketProvider }          from './context/SocketContext'
 import { PageLoader }              from './components/ui'
@@ -13,6 +13,12 @@ import AdminPeople from './pages/admin/People'
 import Login    from './pages/auth/Login'
 import Register from './pages/auth/Register'
 import ForcePasswordChange from './pages/auth/ForcePasswordChange'
+import HowItWorks from './pages/HowItWorks'
+import PendingApproval from './components/PendingApproval'
+import VerifyEmailGate from './components/VerifyEmailGate'
+import VerifyEmail from './pages/auth/VerifyEmail'
+import ForgotPassword from './pages/auth/ForgotPassword'
+import ResetPassword from './pages/auth/ResetPassword'
 // ─── Admin ────────────────────────────────────────────────────────────────────
 import AdminDashboard    from './pages/admin/Dashboard'
 import AdminStudents     from './pages/admin/Students'
@@ -21,6 +27,7 @@ import AdminStaff        from './pages/admin/Staff'
 import ReferralClaim from './pages/admin/ReferralClaim'
 import Revenue from './pages/admin/Revenue'
 import Subscriptions from './pages/admin/Subscriptions'
+import Approvals from './pages/admin/Approvals'
 import AdminOverpayments from './pages/admin/Overpayments'
 import AdminSettings     from './pages/admin/Settings'
 
@@ -39,11 +46,21 @@ import ChildBalance       from './pages/parent/ChildBalance'
 import ChildPayments      from './pages/parent/ChildPayments'
 
 // ─── Protected route ──────────────────────────────────────────────────────────
+const NOT_OPERATIONAL = ['pending', 'needs_info', 'rejected', 'suspended']
 const Protected = ({ children, roles }) => {
   const { user, loading } = useAuth()
+  const { pathname } = useLocation()
   if (loading) return <PageLoader />
   if (!user)   return <Navigate to="/login" replace />
   if (user.mustChangePassword) return <ForcePasswordChange />
+  // New sign-ups must confirm their email first (the API enforces this too)
+  if (user.emailVerified === false && !user.isPlatformAdmin) return <VerifyEmailGate />
+  // School staff cannot use the app until EduPay approves the school (the API enforces this too)
+  if ((user.role === 'admin' || user.role === 'bursar') && !user.isPlatformAdmin) {
+    if (NOT_OPERATIONAL.includes(user.approvalStatus)) return <PendingApproval />
+    if (user.role === 'admin' && user.approvalStatus === 'no_school' && !pathname.startsWith('/admin/settings'))
+      return <Navigate to="/admin/settings" replace />
+  }
   if (roles && !roles.includes(user.role)) return <Navigate to={`/${user.role}`} replace />
   return children
 }
@@ -76,6 +93,10 @@ export default function App() {
         <Route path="/login/bursar"  element={<Login defaultRole="bursar" />} />
         <Route path="/login/parent"  element={<Login defaultRole="parent" />} />
         <Route path="/register"      element={<Register />} />
+        <Route path="/how-it-works"  element={<HowItWorks />} />
+        <Route path="/verify-email"  element={<VerifyEmail />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password"  element={<ResetPassword />} />
 
           {/* ── Admin ───────────────────────────────────────────────────────── */}
           <Route path="/admin" element={
@@ -108,6 +129,11 @@ export default function App() {
               <WithLayout><AdminSettings /></WithLayout>
             </Protected>
           }/>
+          <Route path="/admin/approvals" element={
+            <Protected roles={['admin']}>
+              <WithLayout><Approvals /></WithLayout>
+            </Protected>
+          } />
           <Route path="/admin/subscriptions" element={
             <Protected roles={['admin']}>
               <WithLayout><Subscriptions /></WithLayout>

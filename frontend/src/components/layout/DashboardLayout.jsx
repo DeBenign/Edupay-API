@@ -6,7 +6,7 @@ import { useSocket } from '../../context/SocketContext'
 import SubscriptionBanner from '../SubscriptionBanner'
 import { ENV_NAME }  from '../../api/axios'
 import { LayoutDashboard, Users, GraduationCap, CreditCard,
-         FileText, Bell, Settings, LogOut, Menu, BookOpen, Wallet, RotateCcw, Gift } from 'lucide-react'
+         FileText, Bell, Settings, LogOut, Menu, BookOpen, Wallet, RotateCcw, Gift, ShieldCheck } from 'lucide-react'
 const NAV = {
   admin:  [
   { to: '/admin', label: 'Dashboard',      icon: LayoutDashboard },
@@ -15,6 +15,7 @@ const NAV = {
   { to: '/admin/overpayments', label: 'Overpayments', icon: RotateCcw },
   { to: '/admin/staff',    label: 'Staff', icon: Users },
   { to: '/admin/people', label: 'People', icon: Users },
+  { to: '/admin/approvals', label: 'Approvals', icon: ShieldCheck },
   { to: '/admin/subscriptions', label: 'Subscriptions', icon: CreditCard },
   { to: '/admin/settings', label: 'Settings', icon: Settings },
   { to: '/admin/referrals', label: 'Referral Rewards', icon: Gift },
@@ -45,7 +46,8 @@ function Sidebar({ role, onClose }) {
   const { connected }    = useSocket() || {}
   const navigate         = useNavigate()
   const color            = ROLE_COLOR[role]
- const nav              = (NAV[role] || []).filter((i) => i.to !== '/admin/subscriptions' || user?.isPlatformAdmin)
+ const OWNER_ONLY = ['/admin/subscriptions', '/admin/approvals']
+ const nav              = (NAV[role] || []).filter((i) => !OWNER_ONLY.includes(i.to) || user?.isPlatformAdmin)
 
 
   const handleLogout = () => { logout(); navigate('/login') }

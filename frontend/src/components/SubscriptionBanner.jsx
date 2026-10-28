@@ -21,7 +21,7 @@ export default function SubscriptionBanner() {
         : due
           ? `Your EduPay subscription is overdue. Adding students, fees, staff and cash payments pauses on ${formatDate(sub.graceEndsAt)} unless payment is recorded.`
           : `Your ${sub.status === 'pilot' ? 'pilot' : 'subscription'} ends in ${sub.daysLeft} day${sub.daysLeft === 1 ? '' : 's'} (${formatDate(sub.activeUntil)}).`}
-        {' '}Pay {formatCurrency(sub.pricePerTerm)} per term ({sub.billableStudents} student{sub.billableStudents === 1 ? '' : 's'} × {formatCurrency(sub.ratePerStudent)}, minimum {formatCurrency(sub.minimum)}) to {sub.payTo.bank} <strong>{sub.payTo.accountNumber}</strong> ({sub.payTo.accountName}).
+        {' '}Pay {formatCurrency(sub.pricePerTerm)} per term ({sub.billableStudents} student{sub.billableStudents === 1 ? '' : 's'} × {formatCurrency(sub.ratePerStudent)}, minimum {formatCurrency(sub.minimum)}){sub.payTo ? (<> to {sub.payTo.bank} <strong>{sub.payTo.accountNumber}</strong> ({sub.payTo.accountName}).</>) : '. Contact EduPay for the payment details.'}
       {' '}Use your school name as the reference, then let EduPay know so it can be recorded.
     </div>
   )

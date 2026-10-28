@@ -11,6 +11,27 @@ const schoolSchema = new mongoose.Schema({
   logoUrl:   { type: String, default: null },
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   isActive:  { type: Boolean, default: true },
+  // Who is applying, and in what capacity (checked by EduPay before approval)
+  applicantPosition: { type: String, trim: true },
+  // ── EduPay approval ────────────────────────────────────────────────────
+  // No default on purpose: schools created before this feature have no `approval`
+  // and are treated as approved, so nobody is locked out by the rollout.
+  approval: {
+    status: { type: String, enum: ['pending', 'needs_info', 'approved', 'rejected', 'suspended'] },
+    submittedAt: { type: Date },
+    decidedAt:   { type: Date },
+    decidedBy:   { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    reason:  { type: String },            // shown to the applicant: why rejected or suspended
+    message: { type: String },            // shown to the applicant: what EduPay needs
+    verificationNote: { type: String },   // internal: how EduPay verified the school (never sent to the school)
+    history: [{
+      status: String,
+      by:   { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+      at:   Date,
+      note: String,
+      _id:  false,
+    }],
+  },
   // Which gateway new students at this school get provisioned on.
   // null = fall back to the global DEFAULT_PAYMENT_GATEWAY env var.
   paymentGateway: { type: String, enum: ['nomba', 'paystack', null], default: null },
@@ -29,7 +50,10 @@ const schoolSchema = new mongoose.Schema({
   subscription: {
     pilotEndsAt: { type: Date, default: () => new Date(Date.now() + 120 * 24 * 60 * 60 * 1000) },
     paidUntil:   { type: Date, default: null },
-    declaredStudents: { type: Number, default: 0, min: 0 },
+    // Highest number of active students seen since the last recorded payment (billing basis)
+    peakStudents: { type: Number, default: 0, min: 0 },
+    // Keys like "2026-11-30:7d" of reminder emails already sent, so each is sent once
+    remindersSent: { type: [String], default: [] },
     extendedUntil: { type: Date, default: null },
    extendedNote:  { type: String, default: null },
     extendedBy:    { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
