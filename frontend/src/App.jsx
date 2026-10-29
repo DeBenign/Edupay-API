@@ -8,6 +8,9 @@ import { PageLoader }              from './components/ui'
 import DashboardLayout             from './components/layout/DashboardLayout'
 
 import AdminPeople from './pages/admin/People'
+import { portalOf, homeFor } from './utils/roles'
+import PlatformOverview from './pages/platform/Overview'
+import PlatformAccount  from './pages/platform/Account'
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 import Login    from './pages/auth/Login'
@@ -61,7 +64,8 @@ const Protected = ({ children, roles }) => {
     if (user.role === 'admin' && user.approvalStatus === 'no_school' && !pathname.startsWith('/admin/settings'))
       return <Navigate to="/admin/settings" replace />
   }
-  if (roles && !roles.includes(user.role)) return <Navigate to={`/${user.role}`} replace />
+  // The EduPay owner is the "platform" portal; everyone else uses their own role
+  if (roles && !roles.includes(portalOf(user))) return <Navigate to={homeFor(user)} replace />
   return children
 }
 
@@ -76,7 +80,7 @@ const WithLayout = ({ children }) => (
 const Root = () => {
   const { user, loading } = useAuth()
   if (loading) return <PageLoader />
-  if (user) return <Navigate to={`/${user.role}`} replace />
+  if (user) return <Navigate to={homeFor(user)} replace />
   return <Home />
 }
 
@@ -129,16 +133,30 @@ export default function App() {
               <WithLayout><AdminSettings /></WithLayout>
             </Protected>
           }/>
-          <Route path="/admin/approvals" element={
-            <Protected roles={['admin']}>
+          {/* ── Platform admin (EduPay owner) ───────────────────────────────── */}
+          <Route path="/platform" element={
+            <Protected roles={['platform']}>
+              <WithLayout><PlatformOverview /></WithLayout>
+            </Protected>
+          } />
+          <Route path="/platform/approvals" element={
+            <Protected roles={['platform']}>
               <WithLayout><Approvals /></WithLayout>
             </Protected>
           } />
-          <Route path="/admin/subscriptions" element={
-            <Protected roles={['admin']}>
+          <Route path="/platform/subscriptions" element={
+            <Protected roles={['platform']}>
               <WithLayout><Subscriptions /></WithLayout>
             </Protected>
           } />
+          <Route path="/platform/account" element={
+            <Protected roles={['platform']}>
+              <WithLayout><PlatformAccount /></WithLayout>
+            </Protected>
+          } />
+          {/* Old links (including the ones in notification emails) still work */}
+          <Route path="/admin/approvals"     element={<Navigate to="/platform/approvals" replace />} />
+          <Route path="/admin/subscriptions" element={<Navigate to="/platform/subscriptions" replace />} />
            <Route path="/admin/people" element={
             <Protected roles={['admin']}>
               <WithLayout><AdminPeople /></WithLayout>

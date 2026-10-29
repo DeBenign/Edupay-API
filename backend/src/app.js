@@ -13,7 +13,12 @@ const app = express();
 
 app.set('trust proxy', 1);
 app.use(helmet());
-app.use(cors({ origin: env.clientUrl, credentials: true, methods: ['GET','POST','PUT','PATCH','DELETE'] }));
+// CLIENT_URL may hold several origins, comma-separated; trailing slashes are ignored
+const allowedOrigins = String(env.clientUrl || '').split(',').map((o) => o.trim().replace(/\/+$/, '')).filter(Boolean);
+app.use(cors({
+  origin: (origin, cb) => cb(null, !origin || allowedOrigins.includes(origin)),   // no Origin header = curl, cron, webhooks
+  credentials: true, methods: ['GET','POST','PUT','PATCH','DELETE'],
+}));
 app.use(rateLimit({
   windowMs: 15*60*1000, max: 200, standardHeaders: true, legacyHeaders: false,
   skip: (req) => req.originalUrl.startsWith('/api/webhooks/nomba') || req.originalUrl.startsWith('/api/webhooks/paystack'),

@@ -6,7 +6,7 @@ import { Alert, Spinner, Field, Toast } from '../../components/ui'
 import { useToast } from '../../hooks/useToast'
 import { formatCurrency, formatDate } from '../../utils/formatters'
 import { Building2, Lock, Gift } from 'lucide-react'
-import { ENV_NAME, BASE_URL } from '../../api/axios'
+import EnvBadge from '../../components/EnvBadge'
 
 export default function AdminSettings() {
   const { user, updateUser } = useAuth()
@@ -92,11 +92,7 @@ export default function AdminSettings() {
         <p className="page-sub">Manage your school profile and account</p>
       </div>
 
-      <div className={`flex items-center gap-2 text-xs font-semibold px-3 py-2 rounded-lg border w-fit
-        ${ENV_NAME === 'LIVE' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-blue-50 text-blue-700 border-blue-200'}`}>
-        <span className={`w-2 h-2 rounded-full ${ENV_NAME === 'LIVE' ? 'bg-green-500' : 'bg-blue-500'}`} />
-        Connected to: {ENV_NAME} — {BASE_URL}
-      </div>
+      <EnvBadge variant="banner" />
 
       {/* School profile */}
       <div className="card p-6">

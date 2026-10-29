@@ -5,17 +5,20 @@ import { useAuth } from './AuthContext'
 
 const SocketContext = createContext(null)
 
+// Vercel cannot hold a websocket open, so deployments set VITE_DISABLE_SOCKET=true.
+const DISABLED = import.meta.env.VITE_DISABLE_SOCKET === 'true'
+
 export const SocketProvider = ({ children }) => {
   const { user } = useAuth()
   const socketRef = useRef(null)
   const [connected, setConnected] = useState(false)
 
   useEffect(() => {
-    if (!user || import.meta.env.VITE_DISABLE_SOCKET === 'true') return
+    if (!user || DISABLED) return
 
     const socket = io(import.meta.env.VITE_SOCKET_URL || window.location.origin, {
       transports: ['websocket'],
-      auth: { token: localStorage.getItem('edupay_token') },
+      auth: { token: localStorage.getItem('token') },   // the app stores the JWT under "token"
     })
 
     socket.on('connect',    () => { setConnected(true);  console.log('🔌 Socket connected') })
@@ -35,7 +38,7 @@ export const SocketProvider = ({ children }) => {
   const off = (event, cb) => socketRef.current?.off(event, cb)
 
   return (
-    <SocketContext.Provider value={{ socket: socketRef.current, connected, on, off }}>
+    <SocketContext.Provider value={{ socket: socketRef.current, connected, disabled: DISABLED, on, off }}>
       {children}
     </SocketContext.Provider>
   )
