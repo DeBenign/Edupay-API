@@ -87,7 +87,9 @@ test('receipt: nothing is sent without a linked, active, verified parent; names 
   stubLookups({ ...parent, emailVerified: undefined });   // legacy account counts as verified
   await notify.paymentReceived({ ...base, studentName: '<img src=x> Kid' }, student);
   assert.equal(sent.length, 1);
-  assert.ok(!sent[0].html.includes('<img') && sent[0].html.includes('&lt;img'));
+  // the injected tag must be escaped; the only real <img> is the EduPay logo in the header
+  assert.ok(!sent[0].html.includes('<img src=x') && sent[0].html.includes('&lt;img src=x'));
+  assert.ok(sent[0].html.includes('https://app.edupay.test/logo-96.png'));
 });
 
 // ── Fee due reminders by email ───────────────────────────────────────────────

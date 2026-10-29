@@ -1,6 +1,11 @@
 // src/utils/emailTemplates.js
 // Every dynamic value is HTML-escaped: school names and reasons are typed by users.
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+// Email clients cannot load SVG or localhost, so the logo is a hosted PNG and is skipped in local development
+const LOGO_URL = (() => {
+  const origin = String(process.env.CLIENT_URL || '').split(',')[0].trim().replace(/\/+$/, '');
+  return /^https:\/\//.test(origin) ? `${origin}/logo-96.png` : '';
+})();
 const naira = (n) => `₦${Number(n || 0).toLocaleString('en-NG')}`;
 const day = (d) => new Date(d).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' });
 
@@ -9,7 +14,7 @@ const layout = ({ heading, paragraphs = [], cta, note }) => `<!doctype html>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:24px 12px">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#ffffff;border-radius:12px;padding:28px">
 <tr><td>
-<p style="margin:0 0 16px;font-size:13px;font-weight:bold;color:#2563eb">EduPay</p>
+<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 16px"><tr>${LOGO_URL ? `<td style="padding-right:10px"><img src="${LOGO_URL}" width="40" height="40" alt="" style="display:block;border:0;border-radius:10px"></td>` : ''}<td style="font-size:15px;font-weight:bold;color:#2563eb">EduPay</td></tr></table>
 <h1 style="margin:0 0 16px;font-size:20px;line-height:1.3">${esc(heading)}</h1>
 ${paragraphs.map((p) => `<p style="margin:0 0 14px;font-size:14px;line-height:1.6;color:#374151">${p}</p>`).join('\n')}
 ${cta ? `<p style="margin:22px 0"><a href="${esc(cta.url)}" style="background:#2563eb;color:#ffffff;text-decoration:none;padding:11px 20px;border-radius:8px;font-size:14px;font-weight:bold;display:inline-block">${esc(cta.label)}</a></p>

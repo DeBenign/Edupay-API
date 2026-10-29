@@ -5,6 +5,7 @@ import { useAuth }   from '../../context/AuthContext'
 import { useSocket } from '../../context/SocketContext'
 import SubscriptionBanner from '../SubscriptionBanner'
 import EnvBadge from '../EnvBadge'
+import Logo from '../Logo'
 import { portalOf } from '../../utils/roles'
 import { LayoutDashboard, Users, GraduationCap, CreditCard, FileText, Settings, LogOut, Menu,
          BookOpen, Wallet, RotateCcw, Gift, ShieldCheck, UserCog } from 'lucide-react'
@@ -64,9 +65,7 @@ function Sidebar({ portal, onClose }) {
       {/* Logo */}
       <div className="px-5 py-4 border-b border-gray-100">
         <div className="flex items-center gap-2.5">
-          <div style={{ background: color }} className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-base shadow-sm">
-            🎓
-          </div>
+          <Logo size={34} />
           <div>
             <p className="font-bold text-gray-900 text-sm leading-none">EduPay</p>
             <p className="text-xs text-gray-400 mt-0.5">{ROLE_LABEL[portal]}</p>

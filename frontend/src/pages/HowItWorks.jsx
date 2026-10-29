@@ -1,6 +1,7 @@
 // src/pages/HowItWorks.jsx: public page every school reads BEFORE registering
 import { Link } from 'react-router-dom'
-import { GraduationCap, ShieldCheck, Wallet, CalendarClock, PhoneCall, Users } from 'lucide-react'
+import Logo from '../components/Logo'
+import { ShieldCheck, Wallet, CalendarClock, PhoneCall, Users } from 'lucide-react'
 
 const Section = ({ icon: Icon, title, children }) => (
   <section className="card p-6">
@@ -20,9 +21,7 @@ export default function HowItWorks() {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 py-10 px-4">
       <div className="max-w-2xl mx-auto space-y-5">
         <div className="text-center mb-2">
-          <div className="inline-flex items-center justify-center w-12 h-12 bg-blue-600 rounded-2xl mb-4 shadow-lg shadow-blue-200">
-            <GraduationCap size={24} className="text-white" />
-          </div>
+          <Logo size={56} className="mb-4" />
           <h1 className="text-2xl font-bold text-gray-900">How EduPay works for schools</h1>
           <p className="text-sm text-gray-500 mt-1">Pricing, privacy and subscription, explained before you register.</p>
         </div>

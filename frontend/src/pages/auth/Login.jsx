@@ -1,8 +1,9 @@
 // src/pages/auth/Login.jsx
 import { useState } from 'react'
+import Logo from '../../components/Logo'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
-import { GraduationCap, Eye, EyeOff } from 'lucide-react'
+import { Eye, EyeOff } from 'lucide-react'
 import { Alert, Spinner } from '../../components/ui'
 
 const ROLE_LABELS = { admin: 'Admin', bursar: 'Bursar', parent: 'Parent' }
@@ -46,9 +47,7 @@ export default function Login({ defaultRole }) {
 
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-12 h-12 bg-blue-600 rounded-2xl mb-4 shadow-lg shadow-blue-200">
-            <GraduationCap size={24} className="text-white" />
-          </div>
+          <Logo size={56} className="mb-4" />
           <h1 className="text-2xl font-bold text-gray-900">EduPay</h1>
           <p className="text-sm text-gray-500 mt-1">
             {defaultRole ? `${ROLE_LABELS[defaultRole]} Portal` : 'School Fee Management'}

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { ChevronDown, Menu, X, ArrowRight, ShieldCheck, Zap, Users, Percent, Gift, Wallet } from "lucide-react";
 import { Link } from 'react-router-dom'
+import Logo from '../components/Logo'
 
 // ─── Design tokens ───────────────────────────────────────────────
 // Ink        #0B1B2B  (dark sections, header, text)
@@ -156,7 +157,8 @@ export default function Home() {
       {/* ── Header ─────────────────────────────────────────── */}
       <header className="sticky top-0 z-30 bg-[#0B1B2B] border-b border-[#16283C]">
         <div className="max-w-6xl mx-auto px-5 sm:px-8 h-16 flex items-center justify-between">
-          <a href="/" className="flex items-center gap-2">
+          <a href="/" className="flex items-center gap-2.5">
+            <Logo size={34} />
             <span
               className="text-[20px] font-bold text-white tracking-tight"
               style={{ fontFamily: "'Space Grotesk', sans-serif" }}
@@ -344,7 +346,8 @@ export default function Home() {
       <footer id="contact" className="bg-[#0B1B2B] border-t border-[#16283C]">
         <div className="max-w-6xl mx-auto px-5 sm:px-8 py-12 flex flex-col sm:flex-row justify-between gap-8">
           <div>
-            <span className="text-[18px] font-bold text-white" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+            <span className="inline-flex items-center gap-2.5 text-[18px] font-bold text-white" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+              <Logo size={28} />
               Edu<span className="text-[#00B87C]">Pay</span>
             </span>
             <p className="mt-2 text-[13px] text-[#6E8296] max-w-xs">
