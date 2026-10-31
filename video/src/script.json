@@ -1,0 +1,18 @@
+{
+  "pitch": [
+    {"id": "hook",     "seconds": 7,  "text": "Every term, thousands of naira in school fees move through one shared bank account."},
+    {"id": "problem",  "seconds": 11, "text": "The bursar guesses who paid from a name and an amount. Underpayments go unnoticed. Parents have to call just to check a balance."},
+    {"id": "meet",     "seconds": 8,  "text": "Meet EduPay. Every student gets their own dedicated account numbers, on Nomba and Paystack."},
+    {"id": "online",   "seconds": 16, "text": "A parent transfers from any bank. EduPay identifies the student automatically and reconciles in seconds. A small service charge is added on top, so the school always receives its full fee."},
+    {"id": "manual",   "seconds": 14, "text": "Parent paid at the school? The bursar records cash, cheque, POS, or a transfer to the school's own account, with a unique receipt number. Same engine. No service charge."},
+    {"id": "classify", "seconds": 10,  "text": "Every payment is classified: exact, underpayment, or overpayment, where the parent chooses a refund or a credit."},
+    {"id": "roles",    "seconds": 10, "text": "Admins, bursars and parents all see the same numbers, in real time. Each one sees only what they need."},
+    {"id": "cta",      "seconds": 11, "text": "EduPay. Know who paid, instantly. Start with a free one hundred and twenty day pilot for your school."}
+  ],
+  "teaser": [
+    {"id": "hook",    "seconds": 4,  "text": "School fees. Still tracked on paper?"},
+    {"id": "problem", "seconds": 8,  "text": "Shared accounts. Guesswork. Parents calling to ask if they have been credited."},
+    {"id": "ways",    "seconds": 12, "text": "Parents transfer to their child's own account and it reconciles in seconds. Paid at school? The bursar records it. Same balance everywhere."},
+    {"id": "cta",      "seconds": 11, "text": "EduPay. Know who paid, instantly. Start with a free one hundred and twenty day pilot for your school."}  
+  ]
+}
