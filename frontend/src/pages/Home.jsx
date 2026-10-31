@@ -322,7 +322,7 @@ export default function Home() {
       {/* ── About ──────────────────────────────────────────── */}
       <section id="about" className="max-w-4xl mx-auto px-5 sm:px-8 py-20 text-center">
         <p className="text-[28px] font-bold text-[#0B1B2B] leading-snug" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
-          EduPay was built by Team KudiClass for the DevCareer × Nomba Hackathon —
+          EduPay was built by Team KudiClass
           to close the gap between a bank transfer and a bursar's spreadsheet.
         </p>
       </section>
@@ -370,7 +370,7 @@ export default function Home() {
                 Contact
               </p>
               <div className="flex flex-col gap-2 text-[14px] text-[#B7C4D1]">
-                <a href="mailto:hello@edupay.ng">hello@edupay.ng</a>
+                <a href="mailto:contact@edupay.com">contact@edupay.com</a>
                 <a href="#about">About</a>
               </div>
             </div>

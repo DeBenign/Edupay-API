@@ -359,9 +359,9 @@ Follow **[TEST.md](./TEST.md)**. It walks through every role in order: setup, ma
 
 ---
 
-## Origin
+## About
 
-EduPay began as a project for the DevCareer × Nomba Hackathon (Virtual Account Infrastructure track) and has continued as an independent product for real school adoption.
+EduPay is an independent product built for real school adoption.
 
 **Built by:** Yusuf Ibrahim Olalekan
 

@@ -222,9 +222,9 @@ npm run dev              # http://localhost:5173
 
 ---
 
-## Origin
+## About
 
-EduPay began as a project for the DevCareer × Nomba Hackathon (Virtual Account Infrastructure track) and has since continued past that as an independent product aimed at real school adoption.
+EduPay is an independent product built for real school adoption.
 
 **Built by:** Yusuf Ibrahim Olalekan
 
