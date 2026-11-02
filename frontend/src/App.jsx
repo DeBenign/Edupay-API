@@ -17,6 +17,7 @@ import Login    from './pages/auth/Login'
 import Register from './pages/auth/Register'
 import ForcePasswordChange from './pages/auth/ForcePasswordChange'
 import HowItWorks from './pages/HowItWorks'
+import Pricing from './pages/Pricing'
 import PendingApproval from './components/PendingApproval'
 import VerifyEmailGate from './components/VerifyEmailGate'
 import VerifyEmail from './pages/auth/VerifyEmail'
@@ -98,6 +99,7 @@ export default function App() {
         <Route path="/login/parent"  element={<Login defaultRole="parent" />} />
         <Route path="/register"      element={<Register />} />
         <Route path="/how-it-works"  element={<HowItWorks />} />
+        <Route path="/pricing"       element={<Pricing />} />
         <Route path="/verify-email"  element={<VerifyEmail />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password"  element={<ResetPassword />} />

@@ -2,6 +2,7 @@
 import { Link } from 'react-router-dom'
 import Logo from '../components/Logo'
 import { ShieldCheck, Wallet, CalendarClock, PhoneCall, Users } from 'lucide-react'
+import usePricing, { naira, pct } from '../hooks/usePricing'
 
 const Section = ({ icon: Icon, title, children }) => (
   <section className="card p-6">
@@ -13,10 +14,12 @@ const Section = ({ icon: Icon, title, children }) => (
   </section>
 )
 
-const PRICES = [[50, 30000, '(minimum)'], [100, 30000, ''], [300, 90000, ''], [1000, 300000, '']]
-const naira = (n) => `₦${n.toLocaleString()}`
-
 export default function HowItWorks() {
+  // Every number on this page comes from the backend, so it always matches what schools are charged
+  const { data } = usePricing()
+  const { ratePerStudent, minimum, termDays, graceDays, examples } = data.subscription
+  const sc = data.serviceCharge
+  const firstAtMinimum = examples.find((e) => e.perTerm === minimum)?.students
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 py-10 px-4">
       <div className="max-w-2xl mx-auto space-y-5">
@@ -27,14 +30,14 @@ export default function HowItWorks() {
         </div>
 
         <Section icon={Wallet} title="What it costs">
-          <p><strong>₦300 per student per term, with a minimum of ₦30,000 per term.</strong> Your student count is used only to calculate this subscription. It is never used to estimate your school&apos;s income.</p>
+          <p><strong>{naira(ratePerStudent)} per student per term, with a minimum of {naira(minimum)} per term.</strong> Your student count is used only to calculate this subscription. It is never used to estimate your school&apos;s income.</p>
           <table className="w-full text-left text-sm">
             <thead><tr className="text-gray-400 text-xs"><th className="py-1">Students</th><th>Subscription per term</th></tr></thead>
-            <tbody>{PRICES.map(([n, p, note]) => (
-              <tr key={n} className="border-t border-gray-100"><td className="py-1.5">{n}</td><td>{naira(p)} {note}</td></tr>
+            <tbody>{examples.map((e) => (
+              <tr key={e.students} className="border-t border-gray-100"><td className="py-1.5">{e.students.toLocaleString()}</td><td>{naira(e.perTerm)} {e.students === firstAtMinimum ? '(minimum)' : ''}</td></tr>
             ))}</tbody>
           </table>
-          <p>Parents pay a small service charge on top of the school fee: 1.5% + ₦100 per transfer, capped at ₦2,000 and waived for transfers of ₦2,500 or less. <strong>Your school always receives the full fee.</strong> Cash you record at the school office carries no charge.</p>
+          <p>Parents pay a small service charge on top of the school fee: {pct(sc.rate)} + {naira(sc.flat)} per transfer, capped at {naira(sc.cap)}. The {naira(sc.flat)} part is not charged on transfers of {naira(sc.flatWaivedAtOrBelow)} or less. <strong>Your school always receives the full fee.</strong> Cash you record at the school office carries no charge.</p>
         </Section>
 
         <Section icon={Users} title="How your student numbers are counted">
@@ -58,8 +61,8 @@ export default function HowItWorks() {
 
         <Section icon={CalendarClock} title="Free pilot and subscription conditions">
           <ul className="list-disc ml-4 space-y-1">
-            <li><strong>120 days free</strong>, starting the day EduPay approves your school.</li>
-            <li>After that, a <strong>7-day grace period</strong> while you pay the subscription by bank transfer.</li>
+            <li><strong>{termDays} days free</strong>, starting the day EduPay approves your school.</li>
+            <li>After that, a <strong>{graceDays}-day grace period</strong> while you pay the subscription by bank transfer.</li>
             <li>If the subscription is still unpaid, your school is paused: you cannot enrol students, create or assign fees, add staff or record cash. <strong>Parents can still pay</strong>, payments are still matched, and you can still withdraw and read reports.</li>
             <li>Once EduPay records your transfer, everything reopens immediately.</li>
           </ul>

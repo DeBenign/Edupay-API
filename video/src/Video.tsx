@@ -3,12 +3,14 @@ import {AbsoluteFill, Audio, Sequence, getStaticFiles, interpolate, staticFile, 
 import script from './script.json';
 import {C, FONT} from './brand';
 import * as S from './scenes';
+import {DemoAccounts, DemoApproval, DemoBursar, DemoLoginEnrol, DemoParent, DemoParentLink, DemoReceipt, DemoRegister} from './demoScenes';
 
-type Kind = 'pitch' | 'teaser';
+type Kind = 'pitch' | 'teaser' | 'demo';
 
 const map: Record<Kind, Record<string, React.FC>> = {
   pitch: {hook: S.PitchHook, problem: S.Problem, meet: S.Meet, online: S.OnlineFlow, manual: S.ManualFlow, classify: S.Classify, roles: S.Roles, cta: S.Cta},
   teaser: {hook: S.TeaserHook, problem: S.TeaserProblem, ways: S.TwoWays, cta: S.Cta},
+  demo: {register: DemoRegister, approval: DemoApproval, enrol: DemoLoginEnrol, accounts: DemoAccounts, link: DemoParentLink, bursar: DemoBursar, receipt: DemoReceipt, parent: DemoParent, cta: S.Cta},
 };
 
 export const totalFrames = (kind: Kind, fps: number) =>

@@ -6,7 +6,8 @@
     "dev": "remotion studio src/index.ts",
     "render:pitch": "remotion render src/index.ts Pitch out/edupay-pitch-16x9.mp4",
     "render:teaser": "remotion render src/index.ts Teaser out/edupay-teaser-9x16.mp4",
-    "render:all": "npm run render:pitch && npm run render:teaser",
+    "render:demo": "remotion render src/index.ts Demo out/edupay-demo-16x9.mp4",
+    "render:all": "npm run render:pitch && npm run render:teaser && npm run render:demo",
     "voice": "python3 scripts/make_voice.py"
   },
   "dependencies": {

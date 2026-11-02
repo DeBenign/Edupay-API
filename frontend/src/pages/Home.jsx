@@ -146,7 +146,7 @@ export default function Home() {
     { label: "About", href: "#about" },
     { label: "How it works", href: "#how-it-works" },
     { label: "For schools", href: "#features" },
-    { label: "Pricing & privacy", href: "/how-it-works" },
+    { label: "Pricing & privacy", href: "/pricing" },
     { label: "Contact", href: "#contact" },
   ];
 

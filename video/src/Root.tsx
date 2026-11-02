@@ -11,5 +11,6 @@ export const RemotionRoot: React.FC = () => (
   <>
     <Composition id="Pitch" component={EduPayVideo} durationInFrames={totalFrames('pitch', FPS)} fps={FPS} width={1920} height={1080} defaultProps={{kind: 'pitch' as const}} />
     <Composition id="Teaser" component={EduPayVideo} durationInFrames={totalFrames('teaser', FPS)} fps={FPS} width={1080} height={1920} defaultProps={{kind: 'teaser' as const}} />
+    <Composition id="Demo" component={EduPayVideo} durationInFrames={totalFrames('demo', FPS)} fps={FPS} width={1920} height={1080} defaultProps={{kind: 'demo' as const}} />
   </>
 );

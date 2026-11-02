@@ -1,18 +1,113 @@
 {
   "pitch": [
-    {"id": "hook",     "seconds": 7,  "text": "Every term, thousands of naira in school fees move through one shared bank account."},
-    {"id": "problem",  "seconds": 11, "text": "The bursar guesses who paid from a name and an amount. Underpayments go unnoticed. Parents have to call just to check a balance."},
-    {"id": "meet",     "seconds": 8,  "text": "Meet EduPay. Every student gets their own dedicated account numbers, on Nomba and Paystack."},
-    {"id": "online",   "seconds": 16, "text": "A parent transfers from any bank. EduPay identifies the student automatically and reconciles in seconds. A small service charge is added on top, so the school always receives its full fee."},
-    {"id": "manual",   "seconds": 14, "text": "Parent paid at the school? The bursar records cash, cheque, POS, or a transfer to the school's own account, with a unique receipt number. Same engine. No service charge."},
-    {"id": "classify", "seconds": 10,  "text": "Every payment is classified: exact, underpayment, or overpayment, where the parent chooses a refund or a credit."},
-    {"id": "roles",    "seconds": 10, "text": "Admins, bursars and parents all see the same numbers, in real time. Each one sees only what they need."},
-    {"id": "cta",      "seconds": 11, "text": "EduPay. Know who paid, instantly. Start with a free one hundred and twenty day pilot for your school."}
+    {
+      "id": "hook",
+      "seconds": 7,
+      "text": "Every term, thousands of naira in school fees move through one shared bank account."
+    },
+    {
+      "id": "problem",
+      "seconds": 11,
+      "text": "The bursar guesses who paid from a name and an amount. Underpayments go unnoticed. Parents have to call just to check a balance."
+    },
+    {
+      "id": "meet",
+      "seconds": 8,
+      "text": "Meet EduPay. Every student gets their own dedicated account numbers, on Nomba and Paystack."
+    },
+    {
+      "id": "online",
+      "seconds": 16,
+      "text": "A parent transfers from any bank. EduPay identifies the student automatically and reconciles in seconds. A small service charge is added on top, so the school always receives its full fee."
+    },
+    {
+      "id": "manual",
+      "seconds": 14,
+      "text": "Parent paid at the school? The bursar records cash, cheque, POS, or a transfer to the school's own account, with a unique receipt number. Same engine. No service charge."
+    },
+    {
+      "id": "classify",
+      "seconds": 8,
+      "text": "Every payment is classified: exact, underpayment, or overpayment, where the parent chooses a refund or a credit."
+    },
+    {
+      "id": "roles",
+      "seconds": 10,
+      "text": "Admins, bursars and parents all see the same numbers, in real time. Each one sees only what they need."
+    },
+    {
+      "id": "cta",
+      "seconds": 11,
+      "text": "EduPay. Know who paid, instantly. Start with a free one hundred and twenty day pilot for your school."
+    }
   ],
   "teaser": [
-    {"id": "hook",    "seconds": 4,  "text": "School fees. Still tracked on paper?"},
-    {"id": "problem", "seconds": 8,  "text": "Shared accounts. Guesswork. Parents calling to ask if they have been credited."},
-    {"id": "ways",    "seconds": 12, "text": "Parents transfer to their child's own account and it reconciles in seconds. Paid at school? The bursar records it. Same balance everywhere."},
-    {"id": "cta",      "seconds": 11, "text": "EduPay. Know who paid, instantly. Start with a free one hundred and twenty day pilot for your school."}  
+    {
+      "id": "hook",
+      "seconds": 4,
+      "text": "School fees. Still tracked on paper?"
+    },
+    {
+      "id": "problem",
+      "seconds": 7,
+      "text": "Shared accounts. Guesswork. Parents calling to ask if they have been credited."
+    },
+    {
+      "id": "ways",
+      "seconds": 12,
+      "text": "Parents transfer to their child's own account and it reconciles in seconds. Paid at school? The bursar records it. Same balance everywhere."
+    },
+    {
+      "id": "cta",
+      "seconds": 10,
+      "text": "EduPay. Know who paid, instantly. Start with a free one hundred and twenty day pilot for your school."
+    }
+  ],
+  "demo": [
+    {
+      "id": "register",
+      "seconds": 10,
+      "text": "A school registers in minutes: name, email, phone, and a quick read of how EduPay works. Then it confirms its email."
+    },
+    {
+      "id": "approval",
+      "seconds": 14,
+      "text": "Every school is verified before it starts. EduPay is emailed the application, verifies it, and approves. The school receives its approval email with its free pilot dates."
+    },
+    {
+      "id": "enrol",
+      "seconds": 18,
+      "text": "Once approved, the principal signs in and enrols a student. Name, ID, class. That is all. EduPay creates their dedicated Nomba and Paystack account numbers, and a parent link code."
+    },
+    {
+      "id": "accounts",
+      "seconds": 12,
+      "text": "Every student gets their own account numbers, on both gateways. Share them with the parent, along with the link code."
+    },
+    {
+      "id": "link",
+      "seconds": 13,
+      "text": "The parent signs up, enters the code, and links their child. The account numbers are right there, ready to copy."
+    },
+    {
+      "id": "bursar",
+      "seconds": 27,
+      "text": "This is the bursar's dashboard, live. A parent pays the fee by transfer. It appears instantly, matched to the student, and the totals update. A short payment is flagged as an underpayment, with the balance. A cash payment recorded at the school, with its receipt number, joins the same feed."
+    },
+    {
+      "id": "receipt",
+      "seconds": 12,
+      "text": "Each payment sends the parent a receipt email, for bank transfers and for cash, with the amount, what it was applied to, and the balance."
+    },
+    {
+      "id": "parent",
+      "seconds": 14,
+      "text": "The parent sees it in the app too. The balance drops to zero and the term shows paid, with no phone call to the school."
+    },
+    {
+      "id": "cta",
+      "seconds": 9,
+      "text": "EduPay. Know who paid, instantly. Start with a free one hundred and twenty day pilot for your school."
+    }
   ]
 }

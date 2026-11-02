@@ -6,6 +6,7 @@ One codebase, two videos:
 |---|---|---|---|
 | `Pitch`  | 1920x1080 (16:9) | 85 s | `npm run render:pitch` |
 | `Teaser` | 1080x1920 (9:16) | 27 s | `npm run render:teaser` |
+| `Demo`   | 1920x1080 (16:9) | 126 s | `npm run render:demo` |
 
 ## Run it
 1. Install Node 18+ then `npm install`
@@ -26,3 +27,6 @@ One codebase, two videos:
 Download a track, save it as `public/music.mp3`. It is picked up automatically, fades in and out, and ducks under the voice.
 Sources with clear licences: Pixabay Music (no attribution), YouTube Audio Library, Incompetech (credit required).
 Search "corporate upbeat", "inspiring corporate" or "uplifting acoustic". Keep the licence page for the track.
+
+## Demo video
+`Demo` rebuilds the real bursar live feed and parent balance screens (from the frontend code) with simulated data and a visible "Test environment" tag. Narration is under `demo` in `src/script.json`. Swap in real screen recordings later if you prefer.
