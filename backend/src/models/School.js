@@ -48,7 +48,7 @@ const schoolSchema = new mongoose.Schema({
   platformFeeWaivedUntil: { type: Date, default: null },
 
   subscription: {
-    pilotEndsAt: { type: Date, default: () => new Date(Date.now() + 120 * 24 * 60 * 60 * 1000) },
+    pilotEndsAt: { type: Date, default: () => new Date(Date.now() + (Number(process.env.PILOT_DAYS) || 90) * 24 * 60 * 60 * 1000) },
     paidUntil:   { type: Date, default: null },
     // Highest number of active students seen since the last recorded payment (billing basis)
     peakStudents: { type: Number, default: 0, min: 0 },

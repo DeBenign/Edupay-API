@@ -83,7 +83,7 @@ export default function PendingApproval() {
             <ol className="space-y-3 text-sm text-gray-600">
               <li className="flex gap-3"><CheckCircle2 size={18} className="text-green-600 shrink-0" /> You applied{school ? ` for ${school.name}` : ''}.</li>
               <li className="flex gap-3"><PhoneCall size={18} className="text-amber-600 shrink-0" /> EduPay verifies your school, usually by phone.</li>
-              <li className="flex gap-3"><Clock size={18} className="text-gray-400 shrink-0" /> Once approved, your 120-day free pilot starts and you can enrol students. We will email you the decision.</li>
+              <li className="flex gap-3"><Clock size={18} className="text-gray-400 shrink-0" /> Once approved, your 90-day free pilot starts and you can enrol students. We will email you the decision.</li>
             </ol>
           </div>
         )}

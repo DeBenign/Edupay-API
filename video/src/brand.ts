@@ -2,7 +2,7 @@
 export const CONTACT = {
   website: 'edupay-web.vercel.app',
   phone: '08158447480',
-  email: 'contact@edupay.com',
+  email: 'olalekanibrahim011@gmail.com',
 };
 
 export const C = {

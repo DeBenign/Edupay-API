@@ -3,7 +3,7 @@
 // constants the billing and service-charge code use, so the Pricing page can never disagree
 // with what schools are actually charged. Change a price in env and the page follows.
 const { success, error } = require('../utils/apiResponse');
-const { TERM_DAYS, RATE, MINIMUM, graceDays } = require('../services/subscriptionAccess.service');
+const { TERM_DAYS, PILOT_DAYS, RATE, MINIMUM, graceDays } = require('../services/subscriptionAccess.service');
 const { computeAmountToCollect, GATEWAY_FEE_CONFIG } = require('../services/platformFee.service');
 
 const EXAMPLE_STUDENTS = [50, 100, 300, 500, 1000];
@@ -19,7 +19,8 @@ const getPricing = (req, res) => {
     const subscription = {
       ratePerStudent: RATE,
       minimum: MINIMUM,
-      termDays: TERM_DAYS,          // also the length of the free pilot
+      pilotDays: PILOT_DAYS,        // the free pilot
+      termDays: TERM_DAYS,          // how long one paid term covers
       graceDays: graceDays(),
       examples: EXAMPLE_STUDENTS.map((students) => ({ students, perTerm: Math.max(MINIMUM, students * RATE) })),
     };

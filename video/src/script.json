@@ -27,7 +27,7 @@
     },
     {
       "id": "classify",
-      "seconds": 8,
+      "seconds": 9.5,
       "text": "Every payment is classified: exact, underpayment, or overpayment, where the parent chooses a refund or a credit."
     },
     {
@@ -38,7 +38,7 @@
     {
       "id": "cta",
       "seconds": 11,
-      "text": "EduPay. Know who paid, instantly. Start with a free one hundred and twenty day pilot for your school."
+      "text": "EduPay. Know who paid, instantly. Start with a free ninety day pilot for your school."
     }
   ],
   "teaser": [
@@ -49,18 +49,18 @@
     },
     {
       "id": "problem",
-      "seconds": 7,
+      "seconds": 6.5,
       "text": "Shared accounts. Guesswork. Parents calling to ask if they have been credited."
     },
     {
       "id": "ways",
-      "seconds": 12,
+      "seconds": 13,
       "text": "Parents transfer to their child's own account and it reconciles in seconds. Paid at school? The bursar records it. Same balance everywhere."
     },
     {
       "id": "cta",
-      "seconds": 10,
-      "text": "EduPay. Know who paid, instantly. Start with a free one hundred and twenty day pilot for your school."
+      "seconds": 9,
+      "text": "EduPay. Know who paid, instantly. Start with a free ninety day pilot for your school."
     }
   ],
   "demo": [
@@ -76,7 +76,7 @@
     },
     {
       "id": "enrol",
-      "seconds": 18,
+      "seconds": 16.5,
       "text": "Once approved, the principal signs in and enrols a student. Name, ID, class. That is all. EduPay creates their dedicated Nomba and Paystack account numbers, and a parent link code."
     },
     {
@@ -105,9 +105,24 @@
       "text": "The parent sees it in the app too. The balance drops to zero and the term shows paid, with no phone call to the school."
     },
     {
+      "id": "privacy",
+      "seconds": 15,
+      "text": "Privacy is built in. EduPay can see your school's name, how many students are enrolled, and your subscription status. It cannot see what you collect, your withdrawals, or any parent's balance."
+    },
+    {
+      "id": "pricing",
+      "seconds": 22,
+      "text": "Pricing: three hundred naira per student per term, minimum thirty thousand. Parents pay a small service charge on top of the fee: one point five percent plus one hundred naira, capped at two thousand. The school always receives the full fee. Cash recorded at school has no charge."
+    },
+    {
+      "id": "pilot",
+      "seconds": 27,
+      "text": "Every school starts with ninety days free. Then a seven day grace period to pay the subscription by bank transfer. If it stays unpaid, the school is paused: no new students, fees or cash entries. Parents can still pay, and the school can still withdraw. Once the transfer is recorded, everything reopens at once. The parent service charge stays the same."
+    },
+    {
       "id": "cta",
       "seconds": 9,
-      "text": "EduPay. Know who paid, instantly. Start with a free one hundred and twenty day pilot for your school."
+      "text": "EduPay. Know who paid, instantly. Start with a free ninety day pilot for your school."
     }
   ]
 }

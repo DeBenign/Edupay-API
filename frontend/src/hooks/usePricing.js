@@ -6,7 +6,7 @@ import api from '../api/axios'
 
 export const PRICING_FALLBACK = {
   subscription: {
-    ratePerStudent: 300, minimum: 30000, termDays: 120, graceDays: 7,
+    ratePerStudent: 300, minimum: 30000, pilotDays: 90, termDays: 120, graceDays: 7,
     examples: [50, 100, 300, 500, 1000].map((students) => ({ students, perTerm: Math.max(30000, students * 300) })),
   },
   serviceCharge: {

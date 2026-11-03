@@ -235,7 +235,7 @@ Anyone can request access; nobody operates a school until EduPay approves it. Th
 
 **School status:** `pending` → `approved`, or `needs_info` (applicant fixes details and resubmits), `rejected`, `suspended` (reversible). A pending, rejected, needs_info or suspended school's admin and bursars get `403` (`SCHOOL_PENDING` etc.) on everything except: viewing their status, changing their password, and fixing their own application. Parents, webhooks and reconciliation are never affected, so money in flight is never lost.
 
-**Approving** needs a written verification note and a confirmation that the school was verified by a phone call. The 120-day free pilot starts at approval, not at sign-up. Every decision is saved in the school's history and in the audit log. The owner's review screen (`/admin/approvals`) shows identity and contact details only, never student counts or revenue.
+**Approving** needs a written verification note and a confirmation that the school was verified by a phone call. The 90-day free pilot starts at approval, not at sign-up. Every decision is saved in the school's history and in the audit log. The owner's review screen (`/admin/approvals`) shows identity and contact details only, never student counts or revenue.
 
 **Existing schools** created before this feature have no approval record and count as approved, so nobody is locked out. `node src/scripts/approveExistingSchools.js --apply` stamps them explicitly.
 
@@ -337,6 +337,7 @@ Sandbox accounts are simulated and cannot receive real money. Set `NODE_ENV=prod
 | `BULK_PROVISION_DELAY_MS` | Optional: pause between students when virtual accounts are created after a bulk import (default 1500) |
 | `SUBSCRIPTION_GRACE_DAYS` | Days after the pilot or paid period ends before the lock starts (default 7) |
 | `SUBSCRIPTION_PER_STUDENT`, `SUBSCRIPTION_MINIMUM` | Subscription rate per student per term (default ₦300) and the minimum per school per term (default ₦30,000) |
+| `PILOT_DAYS` | Length of the free pilot in days, counted from approval (default 90). One paid term still covers 120 days. |
 | `REFERRAL_REWARD_AMOUNT`, `REFERRAL_UNLOCK_MARGIN`, `REFERRAL_MAX_REWARDS_PER_MONTH` | Optional referral tuning |
 
 Never commit real credentials. Treat any committed secret as compromised and rotate it.

@@ -274,7 +274,7 @@ export const Cta: React.FC = () => {
       <div style={{display: 'flex', flexDirection: 'column', alignItems: v ? 'flex-start' : 'center', gap: 26, textAlign: v ? 'left' : 'center'}}>
         <Reveal at={0.2} from="scale"><Logo size={150} /></Reveal>
         <Reveal at={0.7}><div style={{fontSize: v ? 104 : 108, fontWeight: 800, letterSpacing: -3, lineHeight: 1.05}}>Know who paid.<br />Instantly.</div></Reveal>
-        <Reveal at={1.6}><Pill bg={C.brand} fg={C.white} size={40}>Free 120-day pilot for your school</Pill></Reveal>
+        <Reveal at={1.6}><Pill bg={C.brand} fg={C.white} size={40}>Free 90-day pilot for your school</Pill></Reveal>
         <Reveal at={2.6}>
           <div style={{fontSize: 36, color: C.sky, fontWeight: 600, lineHeight: 1.5}}>
             {CONTACT.website}<br />{CONTACT.phone}<br />{CONTACT.email}

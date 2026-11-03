@@ -9,7 +9,8 @@ const School = require('../models/School');
 const Student = require('../models/Student');
 
 const DAY_MS = 24 * 60 * 60 * 1000;
-const TERM_DAYS = 120;
+const TERM_DAYS = 120;   // how long one paid term covers (term + holiday)
+const PILOT_DAYS = Number(process.env.PILOT_DAYS) || 90;   // free pilot, counted from the day EduPay approves a school
 const RATE    = Number(process.env.SUBSCRIPTION_PER_STUDENT) || 300;
 const MINIMUM = Number(process.env.SUBSCRIPTION_MINIMUM) || 30000;
 // Where schools send the subscription. Set in env only: nothing is hard-coded in the repo.
@@ -41,7 +42,7 @@ const timeOf = (d) => (d ? new Date(d).getTime() : 0);
 const activeUntilOf = (school) => {
   const pilotEnds = school.subscription?.pilotEndsAt
     ? timeOf(school.subscription.pilotEndsAt)
-    : timeOf(school.createdAt) + TERM_DAYS * DAY_MS;
+    : timeOf(school.createdAt) + PILOT_DAYS * DAY_MS;
   return Math.max(pilotEnds, timeOf(school.subscription?.paidUntil));
 };
 
@@ -95,6 +96,6 @@ const trackPeak = async (schoolId) => {
 };
 
 module.exports = {
-  DAY_MS, TERM_DAYS, RATE, MINIMUM, PAY_TO, payToConfigured, recordEnrolled, trackPeak,
+  DAY_MS, TERM_DAYS, PILOT_DAYS, RATE, MINIMUM, PAY_TO, payToConfigured, recordEnrolled, trackPeak,
   graceDays, priceFor, activeUntilOf, accessOf, getAccess, invalidate, clearCache,
 };

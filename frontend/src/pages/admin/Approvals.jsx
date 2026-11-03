@@ -197,7 +197,7 @@ export default function Approvals() {
                 {action === 'approve' && (
                   <label className="flex items-start gap-2 text-xs text-gray-700">
                     <input type="checkbox" className="mt-0.5" checked={called} onChange={(e) => setCalled(e.target.checked)} />
-                    <span>I verified this school by calling a phone number I trust. Approving starts the school&apos;s 120-day free pilot.</span>
+                    <span>I verified this school by calling a phone number I trust. Approving starts the school&apos;s 90-day free pilot.</span>
                   </label>
                 )}
                 <div className="flex gap-2 justify-end">

@@ -4,9 +4,10 @@
 //   node src/scripts/setPilotEnd.js "De-Benign Schools"                      dry run, shows what would change
 //   node src/scripts/setPilotEnd.js "De-Benign Schools" --yes                pilot ended 10 days ago (past the 7-day grace): LOCKED
 //   node src/scripts/setPilotEnd.js "De-Benign Schools" --days-ago 3 --yes   ended 3 days ago: inside the grace period
-//   node src/scripts/setPilotEnd.js "De-Benign Schools" --restore --yes      pilot ends in 120 days again
+//   node src/scripts/setPilotEnd.js "De-Benign Schools" --restore --yes      pilot ends in 90 days again
 // Every mode clears paidUntil and any extension, so the dates you set are the ones that count.
 require('dotenv').config();
+const PILOT_DAYS = Number(process.env.PILOT_DAYS) || 90;
 const mongoose = require('mongoose');
 const School = require('../models/School');
 const { accessOf } = require('../services/subscriptionAccess.service');
@@ -30,7 +31,7 @@ const parseArgs = (argv) => {
 
 // The new dates
 const plan = ({ restore, daysAgo }, now = Date.now()) => ({
-  'subscription.pilotEndsAt': new Date(restore ? now + 120 * DAY_MS : now - daysAgo * DAY_MS),
+  'subscription.pilotEndsAt': new Date(restore ? now + PILOT_DAYS * DAY_MS : now - daysAgo * DAY_MS),
   'subscription.paidUntil': null,
   'subscription.extendedUntil': null,
 });

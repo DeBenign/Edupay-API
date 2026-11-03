@@ -2,7 +2,7 @@
 // EduPay owner reviews school applications. Applicants can resubmit when EduPay asks for more information.
 const School   = require('../models/School');
 const AuditLog = require('../models/AuditLog');
-const { TERM_DAYS, DAY_MS, invalidate } = require('../services/subscriptionAccess.service');
+const { PILOT_DAYS, DAY_MS, invalidate } = require('../services/subscriptionAccess.service');
 const { clearApprovalCache } = require('../services/schoolApproval.service');
 const notify = require('../services/notify.service');
 const User = require('../models/User');
@@ -43,7 +43,7 @@ const decide = (cfg) => async (req, res) => {
     };
     // A school's free pilot starts when it is approved, not when it signed up
     if (cfg.to === 'approved' && from !== 'suspended' && school.subscription) {
-      school.subscription.pilotEndsAt = new Date(now.getTime() + TERM_DAYS * DAY_MS);
+      school.subscription.pilotEndsAt = new Date(now.getTime() + PILOT_DAYS * DAY_MS);
     }
     await school.save();
     await audit(req, school, cfg.action, { from, to: cfg.to, note: text || null });

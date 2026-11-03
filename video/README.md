@@ -5,8 +5,8 @@ One codebase, two videos:
 | Composition | Size | Length | Command |
 |---|---|---|---|
 | `Pitch`  | 1920x1080 (16:9) | 85 s | `npm run render:pitch` |
-| `Teaser` | 1080x1920 (9:16) | 27 s | `npm run render:teaser` |
-| `Demo`   | 1920x1080 (16:9) | 126 s | `npm run render:demo` |
+| `Teaser` | 1080x1920 (9:16) | 28 s | `npm run render:teaser` |
+| `Demo`   | 1920x1080 (16:9) | 187 s | `npm run render:demo` |
 
 ## Run it
 1. Install Node 18+ then `npm install`

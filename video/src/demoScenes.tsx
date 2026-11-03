@@ -13,12 +13,12 @@ const G = {
   blue: '#2563eb', green: '#16a34a', amber: '#d97706', purple: '#9333ea',
 };
 
-const Frame: React.FC<{url: string; children: React.ReactNode}> = ({url, children}) => (
+const Frame: React.FC<{url: string; tag?: boolean; children: React.ReactNode}> = ({url, tag = true, children}) => (
   <div style={{width: '100%', height: 800, background: G.g50, borderRadius: 22, overflow: 'hidden', boxShadow: '0 40px 80px -20px rgba(0,0,0,0.55)', position: 'relative'}}>
     <div style={{height: 56, background: G.g100, display: 'flex', alignItems: 'center', gap: 10, padding: '0 22px', borderBottom: `1px solid ${G.g200}`}}>
       {['#f87171', '#fbbf24', '#4ade80'].map((c) => <div key={c} style={{width: 14, height: 14, borderRadius: 7, background: c}} />)}
       <div style={{marginLeft: 18, background: C.white, borderRadius: 999, padding: '6px 22px', fontSize: 20, color: G.g500, fontWeight: 500}}>{url}</div>
-      <div style={{marginLeft: 'auto'}}><Pill bg="#fef3c7" fg="#92400e" size={18}>Test environment · simulated data</Pill></div>
+      {tag && <div style={{marginLeft: 'auto'}}><Pill bg="#fef3c7" fg="#92400e" size={18}>Test environment · simulated data</Pill></div>}
     </div>
     <div style={{padding: 26, color: G.g900}}>{children}</div>
   </div>
@@ -251,7 +251,7 @@ export const DemoApproval: React.FC = () => (
         ]} />
       <Mail at={5.6} label="2 · SCHOOL IS APPROVED" to="Mrs. Ngozi Adebayo" subject="Your school is approved on EduPay" heading="Demo School is approved" cta="Open EduPay"
         paras={[
-          <>Hi Ngozi, <b>Demo School</b> has been verified and approved. Your free pilot runs until <b>28 February 2027</b>.</>,
+          <>Hi Ngozi, <b>Demo School</b> has been verified and approved. Your free pilot runs until <b>29 January 2027</b>.</>,
           'You can now enrol students, set up fees and save your payout account.',
         ]} />
     </div>
@@ -527,6 +527,205 @@ export const DemoParentLink: React.FC = () => {
       <Caption items={[
         {from: 0.5, to: 5.4, text: 'Parent enters the school’s link code'},
         {from: 5.8, to: 13, text: 'Account numbers appear, ready to copy'},
+      ]} />
+    </Stage>
+  );
+};
+
+/* ---------------- Policy scenes (mirror HowItWorks.jsx and README pricing) ---------------- */
+const SecTitle: React.FC<{children: React.ReactNode; color?: string}> = ({children, color = G.g900}) => (
+  <div style={{fontSize: 28, fontWeight: 800, color, marginBottom: 12}}>{children}</div>
+);
+
+const Li: React.FC<{ok: boolean; at: number; children: React.ReactNode}> = ({ok, at, children}) => (
+  <Reveal at={at} style={{display: 'flex', alignItems: 'center', gap: 14, fontSize: 25, fontWeight: 600, padding: '10px 0'}}>
+    <span style={{width: 34, height: 34, borderRadius: 17, background: ok ? '#dcfce7' : '#fee2e2', color: ok ? '#15803d' : '#b91c1c', textAlign: 'center', lineHeight: '34px', fontSize: 22, fontWeight: 800, flexShrink: 0}}>{ok ? '✓' : '✕'}</span>
+    {children}
+  </Reveal>
+);
+
+export const DemoPrivacy: React.FC = () => (
+  <Stage>
+    <Frame url="edupay-web.vercel.app/pricing" tag={false}>
+      <div style={{fontSize: 38, fontWeight: 800}}>Privacy: what EduPay can and cannot see</div>
+      <div style={{fontSize: 21, color: G.g500, margin: '4px 0 18px'}}>Pricing, privacy and subscription, explained before you register.</div>
+      <div style={{display: 'flex', gap: 20}}>
+        <Reveal at={0.6} style={{flex: 1}}>
+          <Card style={{padding: 26, height: 360, border: '2px solid #bbf7d0'}}>
+            <SecTitle color="#15803d">EduPay can see</SecTitle>
+            <Li ok at={1.4}>Your school name and contact details</Li>
+            <Li ok at={2.4}>How many students are enrolled</Li>
+            <Li ok at={3.4}>Your subscription status</Li>
+          </Card>
+        </Reveal>
+        <Reveal at={4.4} style={{flex: 1}}>
+          <Card style={{padding: 26, height: 360, border: '2px solid #fecaca'}}>
+            <SecTitle color="#b91c1c">EduPay cannot see</SecTitle>
+            <Li ok={false} at={5.2}>What your school collects per term or session</Li>
+            <Li ok={false} at={6.2}>Your withdrawals</Li>
+            <Li ok={false} at={7.2}>Any parent's balance</Li>
+          </Card>
+        </Reveal>
+      </div>
+      <Reveal at={8.6} style={{marginTop: 18}}>
+        <div style={{background: '#eff6ff', border: '1px solid #bfdbfe', color: '#1e40af', borderRadius: 14, padding: '16px 22px', fontSize: 24, fontWeight: 600}}>
+          Your revenue is visible only to your own admin and bursar. This is enforced by the system, not just by policy.
+        </div>
+      </Reveal>
+    </Frame>
+    <Caption items={[
+      {from: 0.5, to: 4.2, text: 'What EduPay can see'},
+      {from: 4.4, to: 8.4, text: 'What EduPay cannot see'},
+      {from: 8.6, to: 14, text: 'Enforced by the system, not just by policy'},
+    ]} />
+  </Stage>
+);
+
+const charges: [string, string, string, string][] = [['₦1,000', '₦1,015', '₦15', '₦1,000'], ['₦10,000', '₦10,254', '₦254', '₦10,000'], ['₦100,000', '₦101,624', '₦1,624', '₦100,000']];
+
+export const DemoPricing: React.FC = () => {
+  const {t} = useT();
+  const phaseA = t < 10.8;
+  const entered = typed(t, 4.6, '150', 4);
+  const n = entered ? parseInt(entered, 10) : 0;
+  const fee = Math.max(30000, n * 300);
+  return (
+    <Stage>
+      <Frame url="edupay-web.vercel.app/pricing" tag={false}>
+        {phaseA ? (
+          <>
+            <Reveal at={0.2}>
+              <div style={{fontSize: 42, fontWeight: 800, letterSpacing: -1}}>Simple pricing. Pay per student, once a term.</div>
+              <div style={{fontSize: 22, color: G.g500, margin: '6px 0 16px'}}>One price, every feature. No setup fee, and no card needed to start.</div>
+            </Reveal>
+            <div style={{display: 'flex', gap: 16, marginBottom: 16}}>
+              <Reveal at={1.0} style={{flex: 1}}>
+                <div style={{background: G.blue, color: C.white, borderRadius: 16, padding: 20, height: 150}}>
+                  <div style={{fontSize: 19, opacity: 0.85}}>First 90 days</div>
+                  <div style={{fontSize: 44, fontWeight: 800}}>Free</div>
+                  <div style={{fontSize: 16, opacity: 0.85}}>The clock starts the day EduPay approves you.</div>
+                </div>
+              </Reveal>
+              <Reveal at={2.0} style={{flex: 1}}>
+                <Card style={{padding: 20, height: 150}}>
+                  <div style={{fontSize: 19, color: G.g500}}>After that</div>
+                  <div style={{fontSize: 44, fontWeight: 800}}>₦300</div>
+                  <div style={{fontSize: 16, color: G.g500}}>per student, per term</div>
+                </Card>
+              </Reveal>
+              <Reveal at={3.0} style={{flex: 1}}>
+                <Card style={{padding: 20, height: 150}}>
+                  <div style={{fontSize: 19, color: G.g500}}>Smallest fee</div>
+                  <div style={{fontSize: 44, fontWeight: 800}}>₦30,000</div>
+                  <div style={{fontSize: 16, color: G.g500}}>per term, however small the school</div>
+                </Card>
+              </Reveal>
+            </div>
+            <Reveal at={4.0}>
+              <Card style={{padding: 22}}>
+                <div style={{fontSize: 24, fontWeight: 800}}>Work out your fee</div>
+                <div style={{fontSize: 17, color: G.g500, margin: '2px 0 12px'}}>Students × ₦300 = your fee for the term (never below ₦30,000).</div>
+                <div style={{display: 'flex', alignItems: 'center', gap: 16}}>
+                  <span style={{fontSize: 20, color: G.g700}}>How many students?</span>
+                  <div style={{width: 120, height: 46, boxSizing: 'border-box', border: `2px solid ${G.blue}`, borderRadius: 10, padding: '6px 14px', fontSize: 24, lineHeight: '30px'}}>{entered}</div>
+                  <span style={{fontSize: 44, fontWeight: 800, marginLeft: 12}}>{n > 0 ? money(fee).replace('.00', '') : ''}</span>
+                  <span style={{fontSize: 20, color: G.g500}}>{n > 0 ? 'per term' : ''}</span>
+                </div>
+                <div style={{marginTop: 10}}>
+                  {[['50 students', '₦30,000'], ['300 students', '₦90,000'], ['1,000 students', '₦300,000']].map(([a, b], i) => (
+                    <Reveal key={a} at={7.2 + i * 0.8} style={{display: 'flex', justifyContent: 'space-between', fontSize: 21, padding: '7px 0', borderTop: `1px solid ${G.g100}`}}>
+                      <span style={{color: G.g700}}>{a}</span><b>{b} per term</b>
+                    </Reveal>
+                  ))}
+                </div>
+              </Card>
+            </Reveal>
+          </>
+        ) : (
+          <Reveal at={11.0}>
+            <Card style={{padding: 26}}>
+              <div style={{fontSize: 32, fontWeight: 800, marginBottom: 6}}>The parent service charge</div>
+              <div style={{fontSize: 22, color: G.g700, lineHeight: 1.45, marginBottom: 14}}>
+                Parents who pay online add a small charge on top of the fee: <b>1.5% + ₦100</b> per transfer, capped at ₦2,000. The ₦100 part is not charged on transfers of ₦2,500 or less. <b>The school always receives the full fee.</b>
+              </div>
+              <div style={{display: 'flex', padding: '8px 0', fontSize: 16, fontWeight: 700, color: G.g400, borderBottom: `1px solid ${G.g200}`}}>
+                <div style={{flex: 1}}>SCHOOL FEE</div><div style={{flex: 1.2}}>PARENT TRANSFERS</div><div style={{flex: 1}}>CHARGE</div><div style={{flex: 1.2}}>SCHOOL RECEIVES</div>
+              </div>
+              {charges.map((r, i) => (
+                <Reveal key={r[0]} at={12.0 + i * 1.0} style={{display: 'flex', padding: '10px 0', fontSize: 24, borderBottom: `1px solid ${G.g100}`}}>
+                  <div style={{flex: 1}}>{r[0]}</div><div style={{flex: 1.2, fontWeight: 700}}>{r[1]}</div><div style={{flex: 1, color: G.amber, fontWeight: 700}}>{r[2]}</div><div style={{flex: 1.2, fontWeight: 800, color: G.green}}>{r[3]}</div>
+                </Reveal>
+              ))}
+              <Reveal at={16.2} style={{display: 'flex', gap: 12, marginTop: 16, flexWrap: 'wrap'}}>
+                <Pill bg="#f0fdf4" fg="#15803d" border="#bbf7d0" size={21}>School receives the full fee</Pill>
+                <Pill bg="#eff6ff" fg="#1d4ed8" border="#bfdbfe" size={21}>Cash at the school office: no charge</Pill>
+                <Pill bg="#fffbeb" fg="#b45309" border="#fcd34d" size={21}>Same during and after the pilot</Pill>
+              </Reveal>
+            </Card>
+          </Reveal>
+        )}
+      </Frame>
+      <Caption items={[
+        {from: 0.5, to: 4, text: '90 days free, then ₦300 per student per term'},
+        {from: 4.2, to: 10.6, text: 'Work out your fee: minimum ₦30,000'},
+        {from: 11.2, to: 22, text: 'Parents pay a small charge. The school gets the full fee.'},
+      ]} />
+    </Stage>
+  );
+};
+
+export const DemoPilot: React.FC = () => {
+  const {t} = useT();
+  const prog = ramp(t, 1, 8);
+  const seg = [{w: 60, bg: '#22c55e', l: '90 days free'}, {w: 10, bg: '#f59e0b', l: '7-day grace'}, {w: 30, bg: '#ef4444', l: 'Paused until paid'}];
+  return (
+    <Stage>
+      <Frame url="edupay-web.vercel.app/pricing" tag={false}>
+        <div style={{fontSize: 38, fontWeight: 800}}>Free pilot and subscription</div>
+        <div style={{margin: '18px 0 4px', height: 40, display: 'flex', borderRadius: 12, overflow: 'hidden', background: G.g200, position: 'relative'}}>
+          {seg.map((x) => <div key={x.l} style={{width: `${x.w}%`, background: x.bg, opacity: 0.35}} />)}
+          <div style={{position: 'absolute', left: 0, top: 0, bottom: 0, width: `${prog * 100}%`, display: 'flex', overflow: 'hidden'}}>
+            <div style={{width: `${(60 / prog / 100) * 100}%`, minWidth: 0}} />
+          </div>
+          <div style={{position: 'absolute', inset: 0, display: 'flex'}}>
+            {seg.map((x, i) => {
+              const start = seg.slice(0, i).reduce((a, b) => a + b.w, 0);
+              const fill = Math.max(0, Math.min(1, (prog * 100 - start) / x.w));
+              return <div key={x.l} style={{width: `${x.w}%`}}><div style={{width: `${fill * 100}%`, height: '100%', background: x.bg}} /></div>;
+            })}
+          </div>
+        </div>
+        <div style={{display: 'flex', fontSize: 20, fontWeight: 700}}>
+          {seg.map((x) => <div key={x.l} style={{width: `${x.w}%`, color: G.g700}}>{x.l}</div>)}
+        </div>
+        <div style={{display: 'flex', fontSize: 17, color: G.g500, marginTop: 2}}>
+          <div style={{width: '60%'}}>Day 0: EduPay approves your school</div>
+          <div style={{width: '10%'}}>Day 90</div>
+          <div style={{width: '30%'}}>Day 97: subscription due</div>
+        </div>
+        <div style={{display: 'flex', gap: 20, marginTop: 22}}>
+          <Reveal at={10} style={{flex: 1}}>
+            <Card style={{padding: 22, border: '2px solid #fecaca', height: 300}}>
+              <SecTitle color="#b91c1c">If unpaid, your school is paused</SecTitle>
+              {['Enrol students', 'Create or assign fees', 'Add staff', 'Record cash'].map((x, i) => <Li key={x} ok={false} at={10.6 + i * 0.6}>{x}</Li>)}
+            </Card>
+          </Reveal>
+          <Reveal at={13.5} style={{flex: 1}}>
+            <Card style={{padding: 22, border: '2px solid #bbf7d0', height: 300}}>
+              <SecTitle color="#15803d">Still works</SecTitle>
+              {['Parents can still pay', 'Payments still matched', 'You can still withdraw', 'Reports stay readable'].map((x, i) => <Li key={x} ok at={14 + i * 0.6}>{x}</Li>)}
+            </Card>
+          </Reveal>
+        </div>
+        <Reveal at={18} style={{marginTop: 18, display: 'flex', gap: 16}}>
+          <div style={{flex: 1, background: '#fffbeb', border: '1px solid #fcd34d', color: '#92400e', borderRadius: 14, padding: '14px 20px', fontSize: 21, fontWeight: 700}}>The parent service charge stays the same after the pilot</div>
+          <div style={{flex: 1, background: '#f0fdf4', border: '1px solid #bbf7d0', color: '#15803d', borderRadius: 14, padding: '14px 20px', fontSize: 21, fontWeight: 700}}>Transfer recorded: everything reopens immediately</div>
+        </Reveal>
+      </Frame>
+      <Caption items={[
+        {from: 0.5, to: 9.8, text: '90 days free, then a 7-day grace period'},
+        {from: 10, to: 17.8, text: 'Unpaid: new work pauses. Parents can still pay.'},
+        {from: 18, to: 25, text: 'Service charge unchanged. Pay, and it reopens.'},
       ]} />
     </Stage>
   );

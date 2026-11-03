@@ -152,7 +152,7 @@ Use a test school, never a real customer. The dates are set from the backend fol
 | M11 | Extend with no reason, with 0 days, and with 31 days | Each is refused | [ ] |
 | M12 | A non-platform admin calls `POST /api/subscriptions/schools/<id>/extend` | 403 | [ ] |
 | M13 | The platform admin's own login on a locked school | Never blocked | [ ] |
-| M14 | Run the script with `--restore --yes` | Pilot ends in 120 days again; school is open | [ ] |
+| M14 | Run the script with `--restore --yes` | Pilot ends in 90 days again; school is open | [ ] |
 
 ---
 
@@ -231,7 +231,7 @@ Use a fresh school applicant for each row group. Decisions are made by the platf
 | N5 | Owner: **Ask for more information** with a question | Applicant's screen shows your message and an edit form; every other API is still 403 (`SCHOOL_NEEDS_INFO`) | [ ] |
 | N6 | Applicant edits details → **Save and resubmit** | Back in the owner's Pending tab; history shows the resubmission | [ ] |
 | N7 | Owner: **Approve** without ticking the call box, then with a one-word note | Both refused | [ ] |
-| N8 | Owner: **Approve** properly | Applicant gets the dashboard; pilot now ends 120 days from today (Settings card) | [ ] |
+| N8 | Owner: **Approve** properly | Applicant gets the dashboard; pilot now ends 90 days from today (Settings card) | [ ] |
 | N9 | Owner: try to approve the same school again | Refused (an approved school cannot be approved) | [ ] |
 | N10 | A second applicant: owner **Rejects** with a reason | Applicant sees the reason; every API 403 (`SCHOOL_REJECTED`); no resubmit button | [ ] |
 | N11 | Owner: **Suspend** an approved school with a reason | Within 15 seconds its admin and bursars get 403 (`SCHOOL_SUSPENDED`); a parent can still pay and the payment still reconciles | [ ] |

@@ -17,7 +17,7 @@ const Section = ({ icon: Icon, title, children }) => (
 export default function HowItWorks() {
   // Every number on this page comes from the backend, so it always matches what schools are charged
   const { data } = usePricing()
-  const { ratePerStudent, minimum, termDays, graceDays, examples } = data.subscription
+  const { ratePerStudent, minimum, pilotDays, graceDays, examples } = data.subscription
   const sc = data.serviceCharge
   const firstAtMinimum = examples.find((e) => e.perTerm === minimum)?.students
   return (
@@ -61,7 +61,7 @@ export default function HowItWorks() {
 
         <Section icon={CalendarClock} title="Free pilot and subscription conditions">
           <ul className="list-disc ml-4 space-y-1">
-            <li><strong>{termDays} days free</strong>, starting the day EduPay approves your school.</li>
+            <li><strong>{pilotDays} days free</strong>, starting the day EduPay approves your school.</li>
             <li>After that, a <strong>{graceDays}-day grace period</strong> while you pay the subscription by bank transfer.</li>
             <li>If the subscription is still unpaid, your school is paused: you cannot enrol students, create or assign fees, add staff or record cash. <strong>Parents can still pay</strong>, payments are still matched, and you can still withdraw and read reports.</li>
             <li>Once EduPay records your transfer, everything reopens immediately.</li>

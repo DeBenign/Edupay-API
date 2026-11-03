@@ -26,7 +26,7 @@ const Faq = ({ q, children }) => (
 export default function Pricing() {
   const { data: d } = usePricing()
   const [students, setStudents] = useState(150)
-  const { ratePerStudent, minimum, termDays, graceDays, examples } = d.subscription
+  const { ratePerStudent, minimum, pilotDays, termDays, graceDays, examples } = d.subscription
   const sc = d.serviceCharge
   const count = Math.max(0, parseInt(students, 10) || 0)
   const fee = useMemo(() => Math.max(minimum, count * ratePerStudent), [count, minimum, ratePerStudent])
@@ -54,7 +54,7 @@ export default function Pricing() {
         {/* Headline numbers */}
         <div className="grid sm:grid-cols-3 gap-4">
           <div className="rounded-xl p-5 bg-blue-600 text-white">
-            <p className="text-sm text-blue-100">First {termDays} days</p>
+            <p className="text-sm text-blue-100">First {pilotDays} days</p>
             <p className="text-3xl font-bold mt-1">Free</p>
             <p className="text-xs text-blue-100 mt-3 leading-relaxed">Your school is verified, then the full product is yours. The clock starts the day EduPay approves you.</p>
           </div>
@@ -146,7 +146,7 @@ export default function Pricing() {
         </Block>
 
         {/* After the pilot */}
-        <Block title={`After the ${termDays}-day free pilot`}>
+        <Block title={`After the ${pilotDays}-day free pilot`}>
           <div className="card p-6 space-y-4">
             <p className="text-sm text-gray-600 leading-relaxed">
               You have a <strong>{graceDays}-day grace period</strong> to pay by bank transfer. If the subscription is still unpaid after that, your school is paused until payment is recorded.
@@ -203,7 +203,7 @@ export default function Pricing() {
         {/* CTA */}
         <div className="card p-8 text-center space-y-4">
           <h2 className="text-xl font-semibold text-gray-900">Start your free pilot</h2>
-          <p className="text-sm text-gray-500">{termDays} days free. Register your school, and we verify it before you start.</p>
+          <p className="text-sm text-gray-500">{pilotDays} days free. Register your school, and we verify it before you start.</p>
           <div className="flex flex-wrap justify-center gap-3">
             <Link to="/register" className="btn-primary">Register your school</Link>
             {whatsapp && <a href={`https://wa.me/${whatsapp}`} target="_blank" rel="noreferrer" className="btn-secondary"><MessageCircle size={16} /> WhatsApp</a>}
