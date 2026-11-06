@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { subscriptionAPI } from '../../api'
 import { Spinner, Alert } from '../../components/ui'
 import { formatCurrency, formatDate } from '../../utils/formatters'
+import SubscriptionCountdown from '../../components/SubscriptionCountdown'
 
 export default function Subscriptions() {
   const [schools, setSchools] = useState([])
@@ -49,12 +50,6 @@ export default function Subscriptions() {
     } catch (err) { setMsg({ type: 'error', text: err.response?.data?.message || 'Failed to extend access' }) }
   }
 
-  const stateOf = (s) => s.locked
-    ? { text: 'LOCKED', cls: 'text-red-600 font-semibold' }
-    : s.status === 'due'
-      ? { text: `overdue · grace until ${formatDate(s.graceEndsAt)}`, cls: 'text-red-600' }
-      : { text: s.status, cls: s.status === 'active' ? 'text-green-600' : 'text-amber-600' }
-
   if (loading) return <div className="flex justify-center py-24"><Spinner size="lg" /></div>
   return (
     <div className="space-y-5 animate-fade-in">
@@ -68,11 +63,14 @@ export default function Subscriptions() {
               <p className="text-xs text-gray-400">{s.enrolledStudents} enrolled · bills {s.billableStudents} · {s.phone || s.email}</p>
             </div>
             <div className="flex items-center gap-4">
-               <span className={stateOf(s).cls}>
-                {stateOf(s).text} · until {formatDate(s.activeUntil)}
-                {s.extendedUntil && new Date(s.extendedUntil) > new Date() && ` · extended to ${formatDate(s.extendedUntil)}`}
-               </span>
-               <button className="text-xs text-blue-600 hover:underline" onClick={() => record(s)}>Record {formatCurrency(s.amountDue)}</button>
+              <div className="text-right">
+                <SubscriptionCountdown sub={s} />
+                <p className="text-xs text-gray-400 mt-1">
+                  {s.locked ? 'Ended' : s.status === 'due' ? 'Ended' : 'Ends'} {formatDate(s.activeUntil)}
+                  {s.status === 'due' && !s.locked && ` · locks ${formatDate(s.lockedFrom)}`}
+                  {s.extendedUntil && new Date(s.extendedUntil) > new Date() && ` · extended to ${formatDate(s.extendedUntil)}`}
+                </p>
+              </div>
               {(s.status === 'due' || s.locked) && (
                 <button className="text-xs text-gray-500 hover:underline" onClick={() => extend(s)}>Extend</button>
               )}

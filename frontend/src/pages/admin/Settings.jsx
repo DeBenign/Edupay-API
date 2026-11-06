@@ -7,6 +7,7 @@ import { useToast } from '../../hooks/useToast'
 import { formatCurrency, formatDate } from '../../utils/formatters'
 import { Building2, Lock, Gift } from 'lucide-react'
 import EnvBadge from '../../components/EnvBadge'
+import SubscriptionCountdown from '../../components/SubscriptionCountdown'
 
 export default function AdminSettings() {
   const { user, updateUser } = useAuth()
@@ -182,11 +183,14 @@ export default function AdminSettings() {
       {/* Subscription */}
      {sub && (
       <div className="card p-6 space-y-3">
-        <h2 className="font-semibold text-gray-900">Subscription</h2>
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <h2 className="font-semibold text-gray-900">Subscription</h2>
+          <SubscriptionCountdown sub={sub} size="lg" />
+        </div>
         <p className="text-sm text-gray-600">
-          {sub.status === 'pilot'  && `Free pilot until ${formatDate(sub.activeUntil)}.`}
-          {sub.status === 'active' && `Paid until ${formatDate(sub.activeUntil)}.`}
-          {sub.status === 'due' && !sub.locked && `Your subscription is overdue. Adding students, fees, staff and cash payments pauses on ${formatDate(sub.graceEndsAt)}.`}
+          {sub.status === 'pilot'  && `Free pilot until ${formatDate(sub.activeUntil)} (${sub.daysLeft} day${sub.daysLeft === 1 ? '' : 's'} left).`}
+          {sub.status === 'active' && `Paid until ${formatDate(sub.activeUntil)} (${sub.daysLeft} day${sub.daysLeft === 1 ? '' : 's'} left).`}
+          {sub.status === 'due' && !sub.locked && `Your subscription is overdue. Adding students, fees, staff and cash payments pauses in ${sub.lockInDays} day${sub.lockInDays === 1 ? '' : 's'} (${formatDate(sub.lockedFrom)}).`}
           {sub.locked && 'Your subscription has ended. Adding students, fees, staff and cash payments is paused until payment is recorded.'}
         </p>
         <div className="bg-gray-50 rounded-lg p-3 text-sm space-y-1">

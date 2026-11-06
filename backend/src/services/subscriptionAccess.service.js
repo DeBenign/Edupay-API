@@ -57,8 +57,44 @@ const accessOf = (school, now = Date.now()) => {
     inGrace: now > activeUntil && now <= lockedFrom,
     activeUntil: new Date(activeUntil),
     graceEndsAt: new Date(graceEndsAt),
+    lockedFrom: new Date(lockedFrom),   // when the lock actually starts (grace end, or the admin extension if later)
     graceDays: grace,
     extendedUntil: extendedUntil ? new Date(extendedUntil) : null,
+  };
+};
+
+// ── Countdown shown to both the school admin and the platform admin ─────────────
+// Whole days, rounded up (3h left = "1 day left"), so nobody is told "0 days" while still active.
+//   phase: pilot | active | grace | locked      tone: green | amber | red
+//   daysLeft    days until the pilot / paid period ends (0 once it has ended)
+//   overdueDays whole days since it ended (0 while active)
+//   lockInDays  days until the school is locked (counts any extension EduPay gave)
+const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+const daysUntil = (to, from) => Math.ceil((to - from) / DAY_MS);
+
+const countdownOf = (school, now = Date.now()) => {
+  const a = accessOf(school, now);
+  const activeUntil = a.activeUntil.getTime();
+  const lockedFrom = a.lockedFrom.getTime();
+  const lockInDays = Math.max(0, daysUntil(lockedFrom, now));
+  const overdueDays = now > activeUntil ? Math.floor((now - activeUntil) / DAY_MS) : 0;
+  const ago = overdueDays === 0 ? 'today' : `${plural(overdueDays, 'day')} ago`;
+
+  if (a.locked) {
+    return { phase: 'locked', daysLeft: 0, overdueDays, lockInDays: 0, tone: 'red', label: `Locked · ended ${ago}` };
+  }
+  if (a.inGrace) {
+    return {
+      phase: 'grace', daysLeft: 0, overdueDays, lockInDays, tone: 'red',
+      label: `Ended ${ago} · locks in ${plural(lockInDays, 'day')}`,
+    };
+  }
+  const daysLeft = Math.max(0, daysUntil(activeUntil, now));
+  const paid = timeOf(school.subscription?.paidUntil) >= now;
+  return {
+    phase: paid ? 'active' : 'pilot', daysLeft, overdueDays: 0, lockInDays,
+    tone: daysLeft <= 3 ? 'red' : daysLeft <= 14 ? 'amber' : 'green',
+    label: `${paid ? 'Subscription' : 'Pilot'}: ${plural(daysLeft, 'day')} left`,
   };
 };
 
@@ -97,5 +133,5 @@ const trackPeak = async (schoolId) => {
 
 module.exports = {
   DAY_MS, TERM_DAYS, PILOT_DAYS, RATE, MINIMUM, PAY_TO, payToConfigured, recordEnrolled, trackPeak,
-  graceDays, priceFor, activeUntilOf, accessOf, getAccess, invalidate, clearCache,
+  graceDays, priceFor, activeUntilOf, accessOf, countdownOf, getAccess, invalidate, clearCache,
 };

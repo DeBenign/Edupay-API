@@ -5,7 +5,7 @@ const SubscriptionPayment = require('../models/SubscriptionPayment');
 const { success, created, badRequest, notFound, error } = require('../utils/apiResponse');
 
 const {
-  DAY_MS, TERM_DAYS, RATE, PAY_TO, payToConfigured, priceFor, activeUntilOf, accessOf, invalidate, recordEnrolled, clearCache,
+  DAY_MS, TERM_DAYS, RATE, PAY_TO, payToConfigured, priceFor, activeUntilOf, accessOf, countdownOf, invalidate, recordEnrolled, clearCache,
 } = require('../services/subscriptionAccess.service');
 
 const statusOf = (school, enrolled) => {
@@ -15,10 +15,14 @@ const statusOf = (school, enrolled) => {
   const status = now > activeUntil ? 'due' : paidUntil >= now ? 'active' : 'pilot';
   const peakStudents = school.subscription?.peakStudents || 0;
   const price = priceFor(enrolled, peakStudents);
-  const { locked, graceEndsAt, graceDays, extendedUntil } = accessOf(school, now);
+  const { locked, graceEndsAt, graceDays, extendedUntil, lockedFrom } = accessOf(school, now);
+  const countdown = countdownOf(school, now);
   return {
-    status, activeUntil: new Date(activeUntil), daysLeft: Math.ceil((activeUntil - now) / DAY_MS),
-    locked, graceEndsAt, graceDays, extendedUntil,
+    status, activeUntil: new Date(activeUntil),
+    // Days left / overdue / until lock: the same numbers for the school admin and the platform admin
+    daysLeft: countdown.daysLeft, overdueDays: countdown.overdueDays, lockInDays: countdown.lockInDays,
+    phase: countdown.phase, tone: countdown.tone, countdownLabel: countdown.label,
+    locked, graceEndsAt, lockedFrom, graceDays, extendedUntil,
     peakStudents, enrolledStudents: enrolled, ...price, pricePerTerm: price.amountDue, payTo: payToConfigured() ? PAY_TO : null,
   };
 };
@@ -45,12 +49,13 @@ const listSubscriptions = async (req, res) => {
     if (peakOps.length) { await School.bulkWrite(peakOps); clearCache(); }
     const schools = await School.find({ isActive: true }).select('name email phone subscription createdAt').lean();
     const byId = new Map(counts.map((c) => [String(c._id), c.n]));
-    return success(res, {
-      schools: schools.map((s) => {
-        const enrolled = byId.get(String(s._id)) || 0;
-        return { schoolId: s._id, name: s.name, email: s.email, phone: s.phone, activeStudents: enrolled, ...statusOf(s, enrolled) };
-      }),
+    const rows = schools.map((s) => {
+      const enrolled = byId.get(String(s._id)) || 0;
+      return { schoolId: s._id, name: s.name, email: s.email, phone: s.phone, activeStudents: enrolled, ...statusOf(s, enrolled) };
     });
+    // Most urgent first: locked / overdue, then the soonest to end, so follow-ups start at the top
+    rows.sort((a, b) => new Date(a.activeUntil) - new Date(b.activeUntil));
+    return success(res, { schools: rows });
   } catch (err) { return error(res, err.message); }
 };
 
