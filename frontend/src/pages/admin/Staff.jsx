@@ -4,7 +4,8 @@ import { authAPI } from '../../api'
 import { Alert, Modal, Field, Spinner } from '../../components/ui'
 import { Toast } from '../../components/ui'
 import { useToast } from '../../hooks/useToast'
-import { Users, Plus } from 'lucide-react'
+import { Users, Plus, Upload } from 'lucide-react'
+import BulkParentsModal from '../../components/BulkParentsModal'
 
 const INITIAL = { fullName: '', email: '', password: '', role: 'bursar', phone: '' }
 
@@ -14,6 +15,7 @@ export default function AdminStaff() {
   const [form,   setForm]   = useState(INITIAL)
   const [saving, setSaving] = useState(false)
   const [err,    setErr]    = useState('')
+  const [importOpen, setImportOpen] = useState(false)
 
   const set = (k) => (e) => setForm(p => ({ ...p, [k]: e.target.value }))
 
@@ -35,7 +37,7 @@ export default function AdminStaff() {
       <div className="flex items-center justify-between">
         <div className="page-header mb-0">
           <h1 className="page-title">Staff Management</h1>
-          <p className="page-sub">Create bursar and parent accounts</p>
+          <p className="page-sub">Bursars are added one by one. Parents can be added one by one or imported from a file</p>
         </div>
         <button onClick={() => setShow(true)} className="btn-primary"><Plus size={16} /> Add Staff</button>
       </div>
@@ -52,13 +54,20 @@ export default function AdminStaff() {
               <span className="font-bold text-gray-900">{role}</span>
             </div>
             <p className="text-sm text-gray-500 leading-relaxed">{desc}</p>
-            <button onClick={() => { setForm(p => ({ ...p, role: role.toLowerCase() })); setShow(true) }}
-              className="btn-secondary mt-4 text-xs">
-              + Create {role} Account
-            </button>
+            <div className="flex flex-wrap gap-2 mt-4">
+              <button onClick={() => { setForm(p => ({ ...p, role: role.toLowerCase() })); setShow(true) }}
+                className="btn-secondary text-xs">
+                + Create {role} Account
+              </button>
+              {role === 'Parent' && (
+                <button onClick={() => setImportOpen(true)} className="btn-secondary text-xs"><Upload size={13} /> Import from file</button>
+              )}
+            </div>
           </div>
         ))}
       </div>
+
+      <BulkParentsModal open={importOpen} onClose={() => setImportOpen(false)} onDone={() => toast('Parents imported')} />
 
       {/* Create Staff Modal */}
       <Modal open={show} onClose={() => { setShow(false); setErr('') }} title="Create Staff Account">

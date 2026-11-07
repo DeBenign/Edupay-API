@@ -2,7 +2,8 @@ const crypto = require('crypto');
 const User = require('../models/User');
 const Student = require('../models/Student');
 const AuditLog = require('../models/AuditLog');
-const { success, notFound, error } = require('../utils/apiResponse');
+const { success, created, badRequest, notFound, error } = require('../utils/apiResponse');
+const { MAX_ROWS, previewBulk, commitBulk } = require('../services/bulkParents.service');
 const { paginate } = require('../utils/paginate');
 
 // Explicit allow-list: never password, tokens, or link codes
@@ -74,4 +75,28 @@ const resetBursarPassword = async (req, res) => {
   } catch (err) { return error(res, err.message); }
 };
 
-module.exports = { listByRole, setActive, resetBursarPassword };
+// Parents can be added one by one (Staff page) or in bulk. Bursars are manual only: there is no bulk route for them.
+const bulkParents = async (req, res) => {
+  try {
+    const schoolId = req.user.schoolId;
+    if (!schoolId) return badRequest(res, 'Admin must belong to a school first');
+    const { rows, preview = false } = req.body || {};
+    if (!Array.isArray(rows) || !rows.length) return badRequest(res, 'rows must be a non-empty array');
+    if (rows.length > MAX_ROWS) return badRequest(res, `Upload at most ${MAX_ROWS} parents at a time`);
+
+    if (preview) return success(res, await previewBulk(schoolId, rows), 'Preview ready');
+    const result = await commitBulk(schoolId, rows);
+    if (!result.createdCount) return badRequest(res, 'Nothing to import: every row has a problem', result.failed);
+    // One audit entry per new account, then drop the internal id from what the browser receives
+    await Promise.all(result.credentials.map((c) =>
+      AuditLog.create({ actorId: req.user._id, schoolId, targetId: c.userId, action: 'bulk_create_parent' })
+        .catch((e) => console.error('Audit log failed:', e.message))));
+    result.credentials = result.credentials.map(({ userId, ...rest }) => rest);
+    return created(res, result, `${result.createdCount} parent account(s) created. Share the temporary passwords now: they are shown once.`);
+  } catch (err) {
+    console.error('bulkParents error:', err.message);
+    return error(res, err.message);
+  }
+};
+
+module.exports = { listByRole, setActive, resetBursarPassword, bulkParents };

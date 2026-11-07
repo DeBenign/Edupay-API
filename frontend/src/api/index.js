@@ -140,4 +140,5 @@ export const peopleAPI = {
   list: (role, params) => api.get(`/school-people/${role}`, { params }),
   setActive: (id, active) => api.patch(`/school-people/${id}/${active ? 'reactivate' : 'deactivate'}`),
   resetPassword: (id) => api.post(`/school-people/${id}/reset-password`),
+  bulkParents: (data) => api.post('/school-people/parents/bulk', data),
 }

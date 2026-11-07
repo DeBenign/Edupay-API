@@ -3,7 +3,8 @@ import { peopleAPI } from '../../api'
 import { Table, Pagination, EmptyState, Modal, Toast } from '../../components/ui'
 import { useToast } from '../../hooks/useToast'
 import { formatDate } from '../../utils/formatters'
-import { Users, Search } from 'lucide-react'
+import { Users, Search, Upload } from 'lucide-react'
+import BulkParentsModal from '../../components/BulkParentsModal'
 
 export default function AdminPeople() {
   const { toasts, toast, remove } = useToast()
@@ -14,6 +15,7 @@ export default function AdminPeople() {
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   const [temp, setTemp] = useState(null)
+  const [importOpen, setImportOpen] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -62,6 +64,9 @@ export default function AdminPeople() {
               className={`px-4 py-2 capitalize ${tab === t ? 'bg-blue-600 text-white' : 'bg-white text-gray-600'}`}>{t}</button>
           ))}
         </div>
+        {tab === 'parents' && (
+          <button onClick={() => setImportOpen(true)} className="btn-secondary whitespace-nowrap"><Upload size={15} /> Import parents</button>
+        )}
         <div className="relative flex-1">
           <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           <input className="input pl-9" placeholder="Search name, email or phone…" value={search}
@@ -104,6 +109,8 @@ export default function AdminPeople() {
         </Table>
         <Pagination pagination={pagination} onChange={setPage} />
       </div>
+
+      <BulkParentsModal open={importOpen} onClose={() => setImportOpen(false)} onDone={() => { setPage(1); load() }} />
 
       <Modal open={!!temp} onClose={() => setTemp(null)} title="Temporary password" size="sm">
         {temp && (
