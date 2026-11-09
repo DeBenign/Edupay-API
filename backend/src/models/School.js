@@ -59,6 +59,11 @@ const schoolSchema = new mongoose.Schema({
     extendedBy:    { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
    extendedAt:    { type: Date, default: null },
   },
+  // ── Parent fee reminders ────────────────────────────────────────────────
+  reminders: {
+    overdueEnabled: { type: Boolean, default: true },   // weekly reminders after the due date
+    smsEnabled:     { type: Boolean, default: false },  // SMS costs money, so it is opt-in
+  },
   // ── Payout destination for this school's revenue withdrawals ────────────
   payoutBank: {
     accountNumber: { type: String, default: null },

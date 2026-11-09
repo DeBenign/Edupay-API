@@ -7,7 +7,7 @@ const notificationSchema = new mongoose.Schema({
   schoolId: ObjectId,
   type: { 
     type: String, 
-    enum: ['payment_received', 'underpayment', 'overpayment', 'due_reminder'] 
+    enum: ['payment_received', 'underpayment', 'overpayment', 'due_reminder', 'overdue_reminder'] 
   },
   message: String,
   read: { type: Boolean, default: false },

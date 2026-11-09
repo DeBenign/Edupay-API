@@ -194,4 +194,16 @@ const addFeeToStudent = async (req, res) => {
   } catch (err) { return error(res, err.message); }
 };
 
-module.exports = { createFeeStructure, getFeeStructures, getFeeStructure, updateFeeStructure, assignFeeToStudent, assignFeeToClass, getStudentFeeAssignments, adjustFeeAmount, addFeeToStudent };
+// Bursar or admin: remind one student's parent now (in-app, email, and SMS if the school turned it on)
+const remindParent = async (req, res) => {
+  try {
+    const r = await require('../services/feeReminder.service').sendManualReminder({ assignmentId: req.params.id, user: req.user });
+    if (r.ok) return success(res, { channels: r.channels }, r.message);
+    if (r.code === 'not_found') return notFound(res, r.message);
+    if (r.code === 'too_soon') return res.status(429).json({ success: false, message: r.message });
+    if (r.code === 'failed') return error(res, r.message);
+    return badRequest(res, r.message);
+  } catch (err) { console.error('remindParent error:', err.message); return error(res); }
+};
+
+module.exports = { remindParent, createFeeStructure, getFeeStructures, getFeeStructure, updateFeeStructure, assignFeeToStudent, assignFeeToClass, getStudentFeeAssignments, adjustFeeAmount, addFeeToStudent };

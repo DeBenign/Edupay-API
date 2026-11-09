@@ -81,4 +81,10 @@ const feeDueReminder = (parent, ctx) => safe(async () => {
   return deliver(parent.email, tpl.feeDueReminder({ ...ctx, parentName: parent.fullName, url: `${appUrl()}/login` }), { kind: 'fee_reminder' });
 });
 
-module.exports = { appUrl, emailable, paymentReceived, feeDueReminder, passwordResetEmail, passwordChanged, verificationEmail, applicationSubmitted, applicationResubmitted, applicationDecided, subscriptionPaymentRecorded, subscriptionReminder };
+// Daily job or bursar: a fee is past its due date.
+const feeOverdueReminder = (parent, ctx) => safe(async () => {
+  if (!emailable(parent)) return { sent: false, reason: 'no_recipient' };
+  return deliver(parent.email, tpl.feeOverdueReminder({ ...ctx, parentName: parent.fullName, url: `${appUrl()}/login` }), { kind: 'fee_overdue' });
+});
+
+module.exports = { appUrl, emailable, paymentReceived, feeDueReminder, feeOverdueReminder, passwordResetEmail, passwordChanged, verificationEmail, applicationSubmitted, applicationResubmitted, applicationDecided, subscriptionPaymentRecorded, subscriptionReminder };

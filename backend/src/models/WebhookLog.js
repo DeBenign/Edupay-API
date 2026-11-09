@@ -17,7 +17,7 @@ webhookLogSchema.index({ receivedAt: 1 }, { expireAfterSeconds: 7776000 }); // 9
 const notificationSchema = new mongoose.Schema({
   userId:   { type: mongoose.Schema.Types.ObjectId, ref: 'User',   required: true },
   schoolId: { type: mongoose.Schema.Types.ObjectId, ref: 'School', required: true },
-  type:     { type: String, enum: ['payment_received','underpayment','overpayment','due_reminder'], required: true },
+  type:     { type: String, enum: ['payment_received','underpayment','overpayment','due_reminder','overdue_reminder'], required: true },
   title:    { type: String, required: true },
   message:  { type: String, required: true },
   read:     { type: Boolean, default: false },

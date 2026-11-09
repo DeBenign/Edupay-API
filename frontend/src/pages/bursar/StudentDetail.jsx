@@ -5,6 +5,7 @@ import { studentAPI, paymentAPI, feeAPI } from '../../api'
 import { StatusBadge, Spinner, EmptyState, Alert, Modal, Field } from '../../components/ui'
 import { Toast } from '../../components/ui'
 import { useToast } from '../../hooks/useToast'
+import { dueState } from '../../utils/dueState'
 import { formatCurrency, formatDateTime, formatDate, reconciliationLabel } from '../../utils/formatters'
 import { ArrowLeft, Copy, Check, RefreshCw, Plus } from 'lucide-react'
 
@@ -28,6 +29,14 @@ export default function BursarStudentDetail() {
   const [adjErr,      setAdjErr]      = useState('')
   const [adjSaving,   setAdjSaving]   = useState(false)
 
+  const [remindingId, setRemindingId] = useState(null)
+  const remind = async (a) => {
+    if (remindingId) return
+    setRemindingId(a._id)
+    try { const r = await feeAPI.remind(a._id); toast(r.data.message || 'Reminder sent') }
+    catch (err) { toast(err.response?.data?.message || 'Could not send the reminder', 'error') }
+    finally { setRemindingId(null) }
+  }
   const openAdjust = (a) => { setAdj(a); setAdjForm({ newAmount: String(a.amountExpected ?? ''), reason: '' }); setAdjErr('') }
   const submitAdjust = async (e) => {
     e.preventDefault(); setAdjSaving(true); setAdjErr('')
@@ -225,6 +234,9 @@ export default function BursarStudentDetail() {
                   <p className="font-semibold text-gray-900 text-sm">{a.feeStructureId?.name}</p>
                   <p className="text-xs text-gray-400 mt-0.5">
                     {a.feeStructureId?.term} term · {a.feeStructureId?.academicSession} · Due {formatDate(a.feeStructureId?.dueDate)}
+                    {(st === 'unpaid' || st === 'partial') && dueState(a.feeStructureId?.dueDate) && (
+                      <span className={`ml-2 ${dueState(a.feeStructureId.dueDate).className}`}>{dueState(a.feeStructureId.dueDate).label}</span>
+                    )}
                   </p>
                 </div>
                 <div className="flex items-center gap-4 text-right">
@@ -234,7 +246,13 @@ export default function BursarStudentDetail() {
                   </div>
                   <StatusBadge status={st} />
                   {st !== 'paid' && st !== 'overpaid' && (
-                    <button type="button" className="text-xs text-blue-600 hover:underline" onClick={() => openAdjust(a)}>Adjust</button>
+                    <>
+                      <button type="button" className="text-xs text-blue-600 hover:underline disabled:opacity-50" disabled={!!remindingId}
+                        onClick={() => remind(a)} title="Send the parent a payment reminder now">
+                        {remindingId === a._id ? 'Sending…' : 'Remind'}
+                      </button>
+                      <button type="button" className="text-xs text-blue-600 hover:underline" onClick={() => openAdjust(a)}>Adjust</button>
+                    </>
                   )}
                 </div>
               </div>

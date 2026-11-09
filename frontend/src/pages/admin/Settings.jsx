@@ -78,6 +78,15 @@ export default function AdminSettings() {
   } catch (er) { toast(er.response?.data?.message || 'Could not update', 'error') }
 }
 
+  const toggleReminder = (key, onMsg, offMsg) => async (e) => {
+    const next = e.target.checked
+    try {
+      await schoolAPI.update(school._id, { reminders: { [key]: next } })
+      setSchool(s => ({ ...s, reminders: { ...(s.reminders || {}), [key]: next } }))
+      toast(next ? onMsg : offMsg)
+    } catch (er) { toast(er.response?.data?.message || 'Could not update', 'error') }
+  }
+
   const copy = (text) => { navigator.clipboard.writeText(text); toast('Copied') }
   const set   = (k) => (e) => setForm(p => ({ ...p, [k]: e.target.value }))
   const setPw = (k) => (e) => setPwForm(p => ({ ...p, [k]: e.target.value }))
@@ -152,6 +161,27 @@ export default function AdminSettings() {
         </div>
       )}
 
+
+      {/* Parent reminders */}
+      {school && (
+        <div className="card p-6 space-y-4">
+          <h2 className="font-semibold text-gray-900">Parent reminders</h2>
+          <p className="text-sm text-gray-500">
+            Parents with a balance are reminded 3 days before, 1 day before and on the due date, by in-app notice and email.
+            Your bursar can also send a reminder at any time from a student's page.
+          </p>
+          <label className="flex items-start gap-3 text-sm">
+            <input type="checkbox" className="mt-1" checked={school.reminders?.overdueEnabled !== false}
+              onChange={toggleReminder('overdueEnabled', 'Overdue reminders are on', 'Overdue reminders are off')} />
+            <span><b>Remind after the due date.</b> Weekly until the fee is paid, up to 4 reminders.</span>
+          </label>
+          <label className="flex items-start gap-3 text-sm">
+            <input type="checkbox" className="mt-1" checked={school.reminders?.smsEnabled === true}
+              onChange={toggleReminder('smsEnabled', 'SMS reminders are on', 'SMS reminders are off')} />
+            <span><b>Also send SMS.</b> Reaches parents who rarely open email. Needs each parent's phone number on their account, and SMS is paused while your subscription is locked.</span>
+          </label>
+        </div>
+      )}
 
       {/* Referral codes */}
       {school && (

@@ -79,6 +79,15 @@ const updateSchool = async (req, res) => {
     if (req.body.earlyPaymentDiscountEnabled !== undefined && typeof req.body.earlyPaymentDiscountEnabled !== 'boolean')
       return badRequest(res, 'earlyPaymentDiscountEnabled must be true or false');
 
+    if (req.body.reminders !== undefined) {
+      const r = req.body.reminders || {};
+      for (const k of ['overdueEnabled', 'smsEnabled']) {
+        if (r[k] === undefined) continue;
+        if (typeof r[k] !== 'boolean') return badRequest(res, `${k} must be true or false`);
+        school.set(`reminders.${k}`, r[k]);
+      }
+    }
+
     const status = school.approval?.status || 'approved';
     if (status !== 'approved' && req.body.payoutBank !== undefined) return forbidden(res, 'Payout details can be added once your school is approved');
     const allowed = ['name','address','email','phone','logoUrl', 'earlyPaymentDiscountEnabled', 'applicantPosition'];

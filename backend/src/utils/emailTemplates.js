@@ -57,12 +57,23 @@ const paymentReceipt = ({ parentName, school, p }) => {
 };
 
 const feeDueReminder = ({ parentName, school, studentName, feeName, balance, dueDate, daysLeft, url }) => build({
-  subject: daysLeft <= 1 ? `Fee due tomorrow for ${studentName}` : `Fee due in ${daysLeft} days for ${studentName}`,
-  heading: daysLeft <= 1 ? 'A school fee is due tomorrow' : `A school fee is due in ${daysLeft} days`,
+  subject: daysLeft <= 0 ? `Fee due today for ${studentName}` : daysLeft === 1 ? `Fee due tomorrow for ${studentName}` : `Fee due in ${daysLeft} days for ${studentName}`,
+  heading: daysLeft <= 0 ? 'A school fee is due today' : daysLeft === 1 ? 'A school fee is due tomorrow' : `A school fee is due in ${daysLeft} days`,
   lines: [
     L(`Hi ${parentName || 'there'}, ${feeName} for ${studentName} at ${school.name} is due on ${day(dueDate)}. Balance: ${naira(balance)}.`,
       `Hi ${esc(parentName || 'there')}, ${esc(feeName)} for ${esc(studentName)} at ${esc(school.name)} is due on <strong>${esc(day(dueDate))}</strong>. Balance: <strong>${esc(naira(balance))}</strong>.`),
     L("Pay by bank transfer to the student's EduPay account number, shown in the app."),
+  ],
+  cta: { label: 'Open EduPay', url },
+});
+
+const feeOverdueReminder = ({ parentName, school, studentName, feeName, balance, dueDate, overdueDays, url }) => build({
+  subject: `Overdue school fee for ${studentName}`,
+  heading: 'A school fee is overdue',
+  lines: [
+    L(`Hi ${parentName || 'there'}, ${feeName} for ${studentName} at ${school.name} was due on ${day(dueDate)}${overdueDays > 0 ? ` (${overdueDays} day${overdueDays === 1 ? '' : 's'} ago)` : ''}. Outstanding balance: ${naira(balance)}.`,
+      `Hi ${esc(parentName || 'there')}, ${esc(feeName)} for ${esc(studentName)} at ${esc(school.name)} was due on <strong>${esc(day(dueDate))}</strong>${overdueDays > 0 ? ` (${overdueDays} day${overdueDays === 1 ? '' : 's'} ago)` : ''}. Outstanding balance: <strong>${esc(naira(balance))}</strong>.`),
+    L("Please pay by bank transfer to the student's EduPay account number, shown in the app. If you are having difficulty paying, please speak to the school bursar."),
   ],
   cta: { label: 'Open EduPay', url },
 });
@@ -152,4 +163,4 @@ const subscriptionReminder = ({ kind, school, endDate, daysLeft, graceEndsAt, am
   return build({ subject: copy.subject, heading: copy.heading, lines: [L(copy.line), L(how)], cta: { label: 'Open EduPay', url } });
 };
 
-module.exports = { esc, paymentReceipt, feeDueReminder, passwordReset, passwordChanged, verifyEmail, ownerNewApplication, applicationReceived, applicationDecision, subscriptionReceipt, subscriptionReminder };
+module.exports = { esc, paymentReceipt, feeDueReminder, feeOverdueReminder, passwordReset, passwordChanged, verifyEmail, ownerNewApplication, applicationReceived, applicationDecision, subscriptionReceipt, subscriptionReminder };

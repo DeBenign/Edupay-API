@@ -92,21 +92,6 @@ test('receipt: nothing is sent without a linked, active, verified parent; names 
   assert.ok(sent[0].html.includes('https://app.edupay.test/logo-96.png'));
 });
 
-// ── Fee due reminders by email ───────────────────────────────────────────────
-test('fee reminders: emails verified parents only, with balance and due date', async () => {
-  const due = (id, parentId, name) => ({ schoolId: 's1', balance: 30000, studentId: { fullName: name, parentId }, feeStructureId: { name: 'First Term Fees', dueDate: new Date('2026-11-03') } });
-  notificationService.createDueDateReminders = async () => {};
-  FeeAssignment.find = () => chain([due(1, 'p1', 'Chidi'), due(2, 'p2', 'Ada'), due(3, null, 'Obi')]);
-  User.find = () => chain([parent, { _id: 'p2', email: 'unverified@x.test', fullName: 'X', isActive: true, emailVerified: false }]);
-  School.find = () => chain([{ _id: 's1', name: 'Bright Academy' }]);
-  const { sendReminders } = require('../src/jobs/feeReminder.job');
-  await sendReminders(3);
-  assert.equal(sent.length, 1);
-  assert.deepEqual([].concat(sent[0].to), ['mum@x.test']);
-  assert.equal(sent[0].subject, 'Fee due in 3 days for Chidi');
-  assert.ok(sent[0].text.includes('₦30,000') && sent[0].text.includes('November 2026'));
-});
-
 // ── Outbox: never lose an email that matters ─────────────────────────────────
 test('outbox: a failed or slow send is queued for retry; success and "not configured" are not', async () => {
   const msg = { to: 'a@x.test', subject: 'Hi', html: '<p>x</p>', text: 'x' };

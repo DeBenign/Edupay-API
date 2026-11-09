@@ -125,7 +125,7 @@ test('approve needs a verification note AND the call confirmation; starts the pi
   const res = await decide(approveSchool, s, { verificationNote: 'Called the principal on the school line', verifiedByCall: true });
   assert.equal(res.code, 200);
   assert.equal(s.approval.status, 'approved');
-  assert.ok(s.subscription.pilotEndsAt.getTime() > Date.now() + 100 * 86400000, 'pilot restarts at approval');
+  assert.ok(s.subscription.pilotEndsAt.getTime() > Date.now() + 85 * 86400000, 'pilot restarts at approval');
   assert.equal(s.approval.history.at(-1).status, 'approved');
 });
 

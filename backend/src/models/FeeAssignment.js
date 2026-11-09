@@ -20,9 +20,18 @@ const feeAssignmentSchema = new mongoose.Schema({
   // Task 2iii — set once an early full-payment discount has been applied
   discountApplied: { type: Boolean, default: false },
   discountAmount:  { type: Number, default: 0 },
+  // Reminder bookkeeping (see feeReminder.service.js): stops double-sends and caps overdue nagging
+  reminders: {
+    lastAt:        { type: Date, default: null },
+    lastKind:      { type: String, default: null },
+    lastOverdueAt: { type: Date, default: null },
+    overdueCount:  { type: Number, default: 0 },
+    lastManualAt:  { type: Date, default: null },
+  },
 }, { timestamps: true });
 
 feeAssignmentSchema.index({ studentId: 1, feeStructureId: 1 }, { unique: true });
 feeAssignmentSchema.index({ schoolId: 1, status: 1 });
+feeAssignmentSchema.index({ feeStructureId: 1, status: 1 });
 
 module.exports = mongoose.models.FeeAssignment || mongoose.model('FeeAssignment', feeAssignmentSchema);

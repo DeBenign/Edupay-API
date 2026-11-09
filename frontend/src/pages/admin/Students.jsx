@@ -40,6 +40,14 @@ const [savingFee, setSavingFee] = useState(false)
 const [feeErr,    setFeeErr]    = useState('')
 
 const [adjusting,  setAdjusting]  = useState(null)
+const [remindingId, setRemindingId] = useState(null)
+const remind = async (fee) => {
+  if (remindingId) return
+  setRemindingId(fee.assignmentId)
+  try { const r = await feeAPI.remind(fee.assignmentId); toast(r.data.message || 'Reminder sent') }
+  catch (err) { toast(err.response?.data?.message || 'Could not send the reminder', 'error') }
+  finally { setRemindingId(null) }
+}
 const [adjForm,    setAdjForm]    = useState({ newAmount: '', reason: '' })
 const [adjSaving,  setAdjSaving]  = useState(false)
 const [adjErr,     setAdjErr]     = useState('')
@@ -365,7 +373,9 @@ const retryProvision = async (studentId) => {
                 {accountModal.outstandingFees.map((fee) => (
                   <div key={fee.assignmentId} className="text-xs text-amber-700 space-y-1">
                     <div className="flex justify-between">
-                      <span>{fee.name} <button type="button" onClick={() => openAdjust(fee)} className="ml-2 text-blue-600 hover:underline">Adjust</button></span>
+                      <span>{fee.name}
+                        <button type="button" disabled={!!remindingId} onClick={() => remind(fee)} className="ml-2 text-blue-600 hover:underline disabled:opacity-50">{remindingId === fee.assignmentId ? 'Sending…' : 'Remind'}</button>
+                        <button type="button" onClick={() => openAdjust(fee)} className="ml-2 text-blue-600 hover:underline">Adjust</button></span>
                       <span className="font-bold">{formatCurrency(fee.balance)}</span>
                     </div>
                     {Object.entries(fee.amountToPay || {}).map(([gw, p]) => (

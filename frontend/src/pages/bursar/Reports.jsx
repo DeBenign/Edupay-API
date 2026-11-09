@@ -5,6 +5,7 @@ import { StatCard, Table, EmptyState, Spinner, Alert } from '../../components/ui
 import { StatusBadge } from '../../components/ui'
 import { formatCurrency, formatDate, termLabel } from '../../utils/formatters'
 import { downloadCsv } from '../../utils/csv'
+import FeesPaidExport from '../../components/FeesPaidExport'
 import { classReportCsv, reportFileName } from '../../utils/reportExport'
 import { FileText, Download, Filter, TrendingUp, AlertTriangle, Users, Wallet } from 'lucide-react'
 
@@ -43,10 +44,13 @@ export default function BursarReports() {
           <h1 className="page-title">Reports</h1>
           <p className="page-sub">School-wide collection and payment analysis</p>
         </div>
-         <button className="btn-secondary gap-2" onClick={exportCsv} disabled={classes.length === 0}
-            title={classes.length === 0 ? 'Nothing to export yet' : 'Download this report as a CSV file'}>
-          <Download size={15} /> Export CSV
-        </button>
+        <div className="flex gap-2 flex-wrap justify-end">
+          <FeesPaidExport defaultFilters={filters} />
+          <button className="btn-secondary gap-2" onClick={exportCsv} disabled={classes.length === 0}
+            title={classes.length === 0 ? 'Nothing to export yet' : 'Download the class summary as a CSV file'}>
+            <Download size={15} /> Class summary CSV
+          </button>
+        </div>
       </div>
 
       {error && <Alert type="error" message={error} />}

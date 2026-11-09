@@ -5,6 +5,7 @@ import { reportAPI, studentAPI, feeAPI, schoolAPI } from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { StatCard, Spinner, Alert, EmptyState } from '../../components/ui'
 import { formatCurrency } from '../../utils/formatters'
+import FeesPaidExport from '../../components/FeesPaidExport'
 import { GraduationCap, CreditCard, Users, TrendingUp, Plus, ArrowRight, Building2 } from 'lucide-react'
 
 export default function AdminDashboard() {
@@ -36,9 +37,12 @@ export default function AdminDashboard() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="page-header">
-        <h1 className="page-title">Admin Dashboard</h1>
-        <p className="page-sub">Welcome back, {user?.fullName?.split(' ')[0]}</p>
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div className="page-header mb-0">
+          <h1 className="page-title">Admin Dashboard</h1>
+          <p className="page-sub">Welcome back, {user?.fullName?.split(' ')[0]}</p>
+        </div>
+        {!noSchool && <FeesPaidExport />}
       </div>
 
       {error && <Alert type="error" message={error} />}

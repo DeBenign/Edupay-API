@@ -57,6 +57,7 @@ export const feeAPI = {
   getStudentAssignments: (id)     => api.get(`/fees/assignments/${id}`),
   addToStudent: (data) => api.post('/fees/assign-custom', data),
   adjustAssignment: (id, data) => api.patch(`/fees/assignments/${id}/adjust`, data),
+  remind: (id) => api.post(`/fees/assignments/${id}/remind`),
 }
 
 // ─── Payments ─────────────────────────────────────────────────────────────────
@@ -77,6 +78,7 @@ export const reportAPI = {
   overpayments:    (params) => api.get('/reports/overpayments', { params }),
   studentStatement:(id)     => api.get(`/reports/student/${id}/statement`),
   recentPayments: (params) => api.get('/reports/recent', { params }),
+  feesPaid:       (params) => api.get('/reports/fees-paid', { params }),
 }
 
 // ─── Parents ──────────────────────────────────────────────────────────────────

@@ -4,6 +4,7 @@ const {
   getStudentStatement, getRecentPayments,
 } = require('../services/report.service');
 const { getSchoolRevenue, getPlatformRevenue } = require('../services/revenue.service');
+const { getFeesPaidReport } = require('../services/feesPaidReport.service');
 const { success, error, forbidden } = require('../utils/apiResponse');
 
 // ─── GET /api/reports/summary ─────────────────────────────────────────────────
@@ -39,6 +40,21 @@ const classBreakdown = async (req, res) => {
     return success(res, { classes, count: classes.length });
   } catch (err) {
     console.error('classBreakdown error:', err.message);
+    return error(res);
+  }
+};
+
+// ─── GET /api/reports/fees-paid ───────────────────────────────────────────────
+// Everything paid so far (ledger + payments) for ?term=&academicSession=&class= . Admin and bursar.
+const feesPaid = async (req, res) => {
+  try {
+    const schoolId = req.user.schoolId;
+    if (!schoolId) return forbidden(res, 'Not associated with a school');
+    const { term, academicSession, class: cls } = req.query;
+    if (term && !['first', 'second', 'third'].includes(term)) return res.status(400).json({ success: false, message: 'term must be first, second or third' });
+    return success(res, await getFeesPaidReport(schoolId, { term, academicSession: academicSession && String(academicSession).trim(), cls: cls && String(cls).trim() }));
+  } catch (err) {
+    console.error('feesPaid error:', err.message);
     return error(res);
   }
 };
@@ -117,4 +133,5 @@ const platformRevenue = async (req, res) => {
   } catch (err) { return error(res, err.message); }
 };
 
-module.exports = { schoolSummary, classBreakdown, overpayments, studentStatement, recentPayments, schoolRevenue, platformRevenue };
+module.exports = {
+  feesPaid, schoolSummary, classBreakdown, overpayments, studentStatement, recentPayments, schoolRevenue, platformRevenue };
