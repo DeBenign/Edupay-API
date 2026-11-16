@@ -34,7 +34,7 @@ export default function VerifyEmail() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center p-4">
       <div className="w-full max-w-sm text-center">
-        <Logo size={56} className="mb-4" />
+        <Logo variant="horizontal" height={44} className="mb-4" />
         <div className="card p-6 space-y-3">
           {state === 'working' && (<><div className="flex justify-center"><Spinner /></div><p className="text-sm text-gray-500">Verifying your email...</p></>)}
           {state === 'ok' && (

@@ -173,3 +173,17 @@ test('sms numbers are normalised to Nigerian international format; bad numbers a
   assert.equal(f('8031234567'), '2348031234567');
   assert.equal(f('12345'), null); assert.equal(f('0603 123 4567'), null); assert.equal(f(null), null);
 });
+
+// ── The real email templates (the tests above replace the senders) ───────────
+test('email templates: overdue and due-today render, escape names, and show the hosted logo', () => {
+  const tpl = require('../src/utils/emailTemplates');
+  const school = { name: 'Bright <Academy>' };
+  const base = { parentName: 'Mrs Okeke', school, studentName: 'Chidi', feeName: 'First Term Fees', balance: 30000, dueDate: new Date('2026-12-05'), url: 'https://app.edupay.test/login' };
+  const o = tpl.feeOverdueReminder({ ...base, overdueDays: 5 });
+  assert.equal(o.subject, 'Overdue school fee for Chidi');
+  assert.ok(o.html.includes('Bright &lt;Academy&gt;') && !o.html.includes('<Academy>'));
+  assert.ok(o.html.includes('₦30,000') && o.html.includes('5 days ago'));
+  assert.ok(o.html.includes('https://app.edupay.test/logo-email.png'), 'the hosted logo is in the header');
+  assert.equal(tpl.feeDueReminder({ ...base, daysLeft: 0 }).subject, 'Fee due today for Chidi');
+  assert.equal(tpl.feeDueReminder({ ...base, daysLeft: 3 }).subject, 'Fee due in 3 days for Chidi');
+});

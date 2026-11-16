@@ -43,8 +43,8 @@ export default function Register() {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center p-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <Logo size={56} className="mb-4" />
-          <h1 className="text-2xl font-bold text-gray-900">EduPay</h1>
+          <Logo variant="full" height={84} className="mb-3" />
+          <h1 className="sr-only">EduPay</h1>
           <p className="text-sm text-gray-500 mt-1">School Fee Management</p>
         </div>
 

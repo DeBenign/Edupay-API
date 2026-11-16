@@ -118,15 +118,11 @@ export const Pill: React.FC<{
   </span>
 );
 
-export const Logo: React.FC<{size?: number}> = ({size = 120}) => (
+// The brand mark. tone 'dark' = for dark backgrounds (white base); 'light' = for light backgrounds.
+export const Logo: React.FC<{size?: number; tone?: 'dark' | 'light'}> = ({size = 120, tone = 'dark'}) => (
   <Img
-    src={staticFile('logo.svg')}
-    style={{
-      width: size,
-      height: size,
-      borderRadius: size * 0.23,
-      boxShadow: '0 12px 30px -8px rgba(37,99,235,0.6)',
-    }}
+    src={staticFile(tone === 'dark' ? 'logo-icon-dark.png' : 'logo-icon.png')}
+    style={{height: size, width: 'auto'}}
   />
 );
 

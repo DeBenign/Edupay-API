@@ -36,7 +36,7 @@ export default function Pricing() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
       <header className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
-        <Link to="/" className="flex items-center gap-2 font-semibold text-gray-900"><Logo size={32} /> EduPay</Link>
+        <Link to="/" className="flex items-center gap-2 font-semibold text-gray-900"><Logo variant="horizontal" height={30} /></Link>
         <nav className="flex items-center gap-5 text-sm text-gray-600">
           <a href="#pricing" className="font-medium text-gray-900">Pricing</a>
           <a href="#privacy" className="hover:text-gray-900">Privacy</a>

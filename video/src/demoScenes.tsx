@@ -203,7 +203,7 @@ const Mail: React.FC<{label: string; to: string; subject: string; heading: strin
       <div style={{padding: 22}}>
         <div style={{background: C.white, borderRadius: 14, padding: 28, color: G.g900}}>
           <div style={{display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14}}>
-            <Logo size={40} />
+            <Logo size={40} tone="light" />
             <div style={{fontSize: 22, fontWeight: 800, color: C.brand}}>EduPay</div>
           </div>
           <div style={{fontSize: 30, fontWeight: 800, marginBottom: 14, lineHeight: 1.25}}>{heading}</div>
@@ -298,7 +298,7 @@ const Overlay: React.FC<{children: React.ReactNode}> = ({children}) => (
 const AuthShell: React.FC<{title: string; sub: string; children: React.ReactNode}> = ({title, sub, children}) => (
   <div style={{width: 800}}>
     <div style={{textAlign: 'center', marginBottom: 14}}>
-      <div style={{display: 'flex', justifyContent: 'center'}}><Logo size={52} /></div>
+      <div style={{display: 'flex', justifyContent: 'center'}}><Logo size={52} tone="light" /></div>
       <div style={{fontSize: 32, fontWeight: 800, marginTop: 6}}>EduPay</div>
       <div style={{fontSize: 19, color: G.g500}}>School Fee Management</div>
     </div>

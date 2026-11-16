@@ -1,14 +1,27 @@
-// src/components/Logo.jsx: the EduPay mark (3D graduation cap). One source file: public/favicon.svg
-export default function Logo({ size = 40, className = '', rounded = true }) {
+// src/components/Logo.jsx: the EduPay logo. The files live in /public:
+//   horizontal  logo-horizontal.png  mark + wordmark, light backgrounds (sidebar, nav bars, auth pages)
+//   full        logo-full.png        mark + wordmark + tagline, light backgrounds (sign-in and register)
+//   icon        logo-icon.png        mark only, light backgrounds
+//   icon-dark   logo-icon-dark.png   mark only, DARK backgrounds (white base, so it stays visible)
+const FILES = {
+  horizontal:  { src: '/logo-horizontal.png', ratio: 814 / 240 },
+  full:        { src: '/logo-full.png',       ratio: 1022 / 369 },
+  icon:        { src: '/logo-icon.png',       ratio: 465 / 432 },
+  'icon-dark': { src: '/logo-icon-dark.png',  ratio: 542 / 503 },
+}
+
+export default function Logo({ variant = 'horizontal', height = 40, size, className = '' }) {
+  const f = FILES[variant] || FILES.horizontal
+  const h = size ?? height
   return (
     <img
-      src="/favicon.svg"
-      width={size}
-      height={size}
+      src={f.src}
       alt="EduPay"
+      height={h}
+      width={Math.round(h * f.ratio)}
       draggable={false}
       className={`inline-block select-none ${className}`}
-      style={{ width: size, height: size, borderRadius: rounded ? size * 0.23 : 0, boxShadow: '0 8px 20px -6px rgba(37,99,235,.45)' }}
+      style={{ height: h, width: 'auto' }}
     />
   )
 }

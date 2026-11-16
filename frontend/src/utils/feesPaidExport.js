@@ -89,6 +89,7 @@ const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '
 
 export const printHtml = (data) => {
   const t = data.totals
+  const origin = typeof window !== 'undefined' ? window.location.origin : ''
   const head = ['Student ID', 'Student', 'Class', 'Fee', 'Expected', 'Paid', 'Balance', 'Status', 'Last payment']
   const rows = data.ledger.map((r) => `<tr><td>${esc(r.studentCode)}</td><td>${esc(r.studentName)}</td><td>${esc(r.class)}</td><td>${esc(r.fee)}</td>
     <td class="n">${money(r.expected)}</td><td class="n">${money(r.paid)}</td><td class="n">${money(r.balance)}</td><td>${esc(STATUS[r.status] || r.status)}</td><td>${esc(dateOnly(r.lastPaymentAt))}</td></tr>`).join('')
@@ -97,12 +98,14 @@ export const printHtml = (data) => {
   return `<!doctype html><html><head><meta charset="utf-8"><title>${esc(exportFileName(data, 'pdf').replace(/\.pdf$/, ''))}</title><style>
   @page { size: A4 landscape; margin: 12mm }
   body { font: 11px/1.4 Arial, Helvetica, sans-serif; color: #111 }
+  .logo { height: 34px; display: block; margin-bottom: 8px }
   h1 { font-size: 18px; margin: 0 0 2px } h2 { font-size: 13px; margin: 18px 0 6px } .m { color: #666; font-size: 10px }
   .sum { display: flex; gap: 18px; margin: 10px 0 4px; flex-wrap: wrap } .sum div { border: 1px solid #ccc; border-radius: 6px; padding: 6px 12px } .sum b { display: block; font-size: 14px }
   table { width: 100%; border-collapse: collapse } th { background: #1F3A5F; color: #fff; text-align: left; padding: 5px 6px; font-size: 10px }
   td { padding: 4px 6px; border-bottom: 1px solid #ddd; vertical-align: top } tr { page-break-inside: avoid } .n { text-align: right; white-space: nowrap }
   tfoot td { font-weight: bold; border-top: 2px solid #1F3A5F } thead { display: table-header-group } .pb { page-break-before: always }
   </style></head><body>
+  ${origin ? `<img class="logo" src="${esc(origin)}/logo-horizontal.png" alt="EduPay">` : ''}
   <h1>${esc(data.school?.name || 'School')}: fees paid so far</h1>
   <div class="m">${esc(scopeLabel(data.filters))} · Generated ${esc(dateTime(data.generatedAt))}</div>
   <div class="sum"><div><b>₦${money(t.expected)}</b>Expected</div><div><b>₦${money(t.paid)}</b>Paid so far</div><div><b>₦${money(t.outstanding)}</b>Outstanding</div>
@@ -123,6 +126,10 @@ export const printFeesPaid = (data) => {
   document.body.appendChild(frame)
   const doc = frame.contentWindow.document
   doc.open(); doc.write(printHtml(data)); doc.close()
-  const go = () => { frame.contentWindow.focus(); frame.contentWindow.print(); setTimeout(() => frame.remove(), 60000) }
+  const go = async () => {
+    // give the logo a moment to load so it appears on the printout
+    await Promise.race([Promise.all([...doc.images].map((i) => (i.complete ? 1 : new Promise((r) => { i.onload = i.onerror = r })))), new Promise((r) => setTimeout(r, 2000))])
+    frame.contentWindow.focus(); frame.contentWindow.print(); setTimeout(() => frame.remove(), 60000)
+  }
   if (doc.readyState === 'complete') setTimeout(go, 100); else frame.onload = () => setTimeout(go, 100)
 }

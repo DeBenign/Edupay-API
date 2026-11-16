@@ -64,13 +64,8 @@ function Sidebar({ portal, onClose }) {
     <aside className="flex flex-col h-full bg-white border-r border-gray-100">
       {/* Logo */}
       <div className="px-5 py-4 border-b border-gray-100">
-        <div className="flex items-center gap-2.5">
-          <Logo size={34} />
-          <div>
-            <p className="font-bold text-gray-900 text-sm leading-none">EduPay</p>
-            <p className="text-xs text-gray-400 mt-0.5">{ROLE_LABEL[portal]}</p>
-          </div>
-        </div>
+        <Logo variant="horizontal" height={32} />
+        <p className="text-xs text-gray-400 mt-1.5">{ROLE_LABEL[portal]}</p>
         <EnvBadge />
       </div>
 
@@ -142,7 +137,7 @@ export default function DashboardLayout({ children }) {
           <button onClick={() => setOpen(true)} className="btn-ghost p-2">
             <Menu size={20} />
           </button>
-          <span className="font-bold text-sm text-gray-900">EduPay</span>
+          <Logo variant="horizontal" height={26} />
           <div className="w-9" />
         </header>
 

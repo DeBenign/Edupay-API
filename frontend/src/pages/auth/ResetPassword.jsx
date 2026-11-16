@@ -32,7 +32,7 @@ export default function ResetPassword() {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center p-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <Logo size={56} className="mb-4" />
+          <Logo variant="horizontal" height={44} className="mb-4" />
           <h1 className="text-2xl font-bold text-gray-900">Choose a new password</h1>
         </div>
         <div className="card p-6">

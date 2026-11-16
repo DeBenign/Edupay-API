@@ -89,7 +89,7 @@ test('receipt: nothing is sent without a linked, active, verified parent; names 
   assert.equal(sent.length, 1);
   // the injected tag must be escaped; the only real <img> is the EduPay logo in the header
   assert.ok(!sent[0].html.includes('<img src=x') && sent[0].html.includes('&lt;img src=x'));
-  assert.ok(sent[0].html.includes('https://app.edupay.test/logo-96.png'));
+  assert.ok(sent[0].html.includes('https://app.edupay.test/logo-email.png'));
 });
 
 // ── Outbox: never lose an email that matters ─────────────────────────────────

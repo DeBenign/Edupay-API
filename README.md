@@ -1,3 +1,5 @@
+<p align="center"><img src="frontend/public/logo-full.png" alt="EduPay: Simplifying School Payments" width="360"></p>
+
 # EduPay
 
 **School fee payment infrastructure for Nigerian schools.**
