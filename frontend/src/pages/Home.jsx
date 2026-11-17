@@ -4,9 +4,9 @@ import { Link } from 'react-router-dom'
 import Logo from '../components/Logo'
 
 // ─── Design tokens ───────────────────────────────────────────────
-// Ink        #0B1B2B  (dark sections, header, text)
+// Logo navy  #071D49 (buttons/links) · Ink #0B1B2B (nav + dark sections)  (dark sections, header, text)
 // Paper      #F7F8FA  (page background)
-// Ledger     #00B87C  (reconciliation / success accent)
+// Ledger     #0DFF63  (reconciliation / success accent)
 // Naira      #F2A93B  (warmth, discounts, rewards accent)
 // Slate      #5B6472  (body copy)
 // Line       #E4E7EC  (hairlines / dividers)
@@ -43,7 +43,7 @@ function LedgerTicker() {
     <div className="rounded-2xl border border-[#1F3247] bg-[#0F2135] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.5)] overflow-hidden">
       <div className="flex items-center justify-between px-5 py-3 border-b border-[#1F3247]">
         <div className="flex items-center gap-2">
-          <span className="h-2 w-2 rounded-full bg-[#00B87C]" />
+          <span className="h-2 w-2 rounded-full bg-[#0DFF63]" />
           <span className="text-[13px] text-[#9FB0C0] font-medium" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
             Live reconciliation
           </span>
@@ -71,7 +71,7 @@ function LedgerTicker() {
                 <p className="text-[14px] text-[#E7EDF3]" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>
                   {entry.amount}
                 </p>
-                <p className="text-[11px] text-[#00B87C] font-medium">✓ {entry.status}</p>
+                <p className="text-[11px] text-[#0DFF63] font-medium">✓ {entry.status}</p>
               </div>
             </div>
           );
@@ -113,7 +113,7 @@ function LoginMenu({ mobile = false }) {
         type="button"
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
-        className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#00B87C] text-[#0B1B2B] text-sm font-semibold hover:bg-[#00A46E] transition-colors"
+        className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#0DFF63] text-[#071D49] text-sm font-semibold hover:bg-[#0AD654] transition-colors"
       >
         Log in
         <ChevronDown
@@ -158,12 +158,12 @@ export default function Home() {
       <header className="sticky top-0 z-30 bg-[#0B1B2B] border-b border-[#16283C]">
         <div className="max-w-6xl mx-auto px-5 sm:px-8 h-16 flex items-center justify-between">
           <a href="/" className="flex items-center gap-2.5">
-            <Logo size={34} />
+            <Logo variant="icon-dark" size={34} />
             <span
-              className="text-[20px] font-bold text-white tracking-tight"
+              className="text-[22px] font-bold text-white tracking-tight leading-none"
               style={{ fontFamily: "'Space Grotesk', sans-serif" }}
             >
-              Edu<span className="text-[#00B87C]">Pay</span>
+              Edu<span className="text-[#0DFF63]">pay</span>
             </span>
           </a>
 
@@ -203,7 +203,7 @@ export default function Home() {
         <div className="max-w-6xl mx-auto px-5 sm:px-8 pt-16 pb-24 grid md:grid-cols-2 gap-14 items-center">
           <div>
             <span
-              className="inline-block text-[12px] font-medium text-[#00B87C] bg-[#0F2135] border border-[#1F3247] rounded-full px-3 py-1 mb-6"
+              className="inline-block text-[12px] font-medium text-[#0DFF63] bg-[#0F2135] border border-[#1F3247] rounded-full px-3 py-1 mb-6"
               style={{ fontFamily: "'IBM Plex Mono', monospace" }}
             >
               NOMBA + PAYSTACK · LIVE VIRTUAL ACCOUNTS
@@ -224,7 +224,7 @@ export default function Home() {
             <div className="mt-8 flex flex-wrap gap-3">
               <Link
                 to="/login/admin"
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-[#00B87C] text-[#0B1B2B] text-[14px] font-semibold hover:bg-[#00A46E] transition-colors"
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-[#0DFF63] text-[#071D49] text-[14px] font-semibold hover:bg-[#0AD654] transition-colors"
               >
                 Set up your school <ArrowRight size={16} />
               </Link>
@@ -308,7 +308,7 @@ export default function Home() {
               { icon: Users, title: "Built for every role", body: "Separate, focused dashboards so admins, bursars, and parents each see only what they need." },
             ].map((f) => (
               <div key={f.title} className="rounded-2xl border border-[#1F2735] bg-[#141B29] p-6">
-                <f.icon size={20} className="text-[#00B87C]" />
+                <f.icon size={20} className="text-[#0DFF63]" />
                 <h3 className="mt-4 text-[15px] font-semibold text-white" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
                   {f.title}
                 </h3>
@@ -328,14 +328,14 @@ export default function Home() {
       </section>
 
       {/* ── CTA ────────────────────────────────────────────── */}
-      <section className="bg-[#00B87C]">
+      <section className="bg-[#0DFF63]">
         <div className="max-w-6xl mx-auto px-5 sm:px-8 py-14 flex flex-col sm:flex-row items-center justify-between gap-6">
           <p className="text-[22px] font-bold text-[#0B1B2B]" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
             Ready to stop matching statements by hand?
           </p>
           <Link
             to="/login/admin"
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-[#0B1B2B] text-white text-[14px] font-semibold whitespace-nowrap"
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-[#071D49] text-white text-[14px] font-semibold whitespace-nowrap hover:bg-[#04112D] transition-colors"
           >
             Get started <ArrowRight size={16} />
           </Link>
@@ -347,8 +347,8 @@ export default function Home() {
         <div className="max-w-6xl mx-auto px-5 sm:px-8 py-12 flex flex-col sm:flex-row justify-between gap-8">
           <div>
             <span className="inline-flex items-center gap-2.5 text-[18px] font-bold text-white" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
-              <Logo size={28} />
-              Edu<span className="text-[#00B87C]">Pay</span>
+              <Logo variant="icon-dark" size={28} />
+              Edu<span className="text-[#0DFF63]">pay</span>
             </span>
             <p className="mt-2 text-[13px] text-[#6E8296] max-w-xs">
               School fee infrastructure for Nigerian schools. Team KudiClass.

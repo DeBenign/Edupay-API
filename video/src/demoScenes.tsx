@@ -10,7 +10,7 @@ const ramp = (t: number, at: number, len = 1.2) =>
 
 const G = {
   g50: '#f9fafb', g100: '#f3f4f6', g200: '#e5e7eb', g400: '#9ca3af', g500: '#6b7280', g700: '#374151', g900: '#111827',
-  blue: '#2563eb', green: '#16a34a', amber: '#d97706', purple: '#9333ea',
+  blue: '#071d49', green: '#16a34a', amber: '#d97706', purple: '#9333ea',
 };
 
 const Frame: React.FC<{url: string; tag?: boolean; children: React.ReactNode}> = ({url, tag = true, children}) => (
@@ -30,7 +30,7 @@ const Caption: React.FC<{items: {from: number; to: number; text: string}[]}> = (
   return (
     <div style={{position: 'absolute', left: 0, right: 0, bottom: 34, display: 'flex', justifyContent: 'center'}}>
       {cur && (
-        <div style={{background: 'rgba(11,23,54,0.88)', color: C.white, fontSize: 38, fontWeight: 700, padding: '14px 34px', borderRadius: 18, border: `2px solid ${C.brand}`}}>
+        <div style={{background: 'rgba(11,23,54,0.88)', color: C.white, fontSize: 38, fontWeight: 700, padding: '14px 34px', borderRadius: 18, border: `2px solid ${C.brandLight}`}}>
           {cur.text}
         </div>
       )}
@@ -89,7 +89,7 @@ export const DemoBursar: React.FC = () => {
             <span>Collection Progress</span><span style={{color: G.blue}}>{Math.round(pct * 100)}%</span>
           </div>
           <div style={{height: 14, background: G.g100, borderRadius: 999, marginTop: 10, overflow: 'hidden'}}>
-            <div style={{width: `${pct * 100}%`, height: '100%', background: `linear-gradient(90deg, #3b82f6, ${G.blue})`, borderRadius: 999}} />
+            <div style={{width: `${pct * 100}%`, height: '100%', background: `linear-gradient(90deg, #0ad654, #0dff63)`, borderRadius: 999}} />
           </div>
         </Card>
         <Card style={{overflow: 'hidden'}}>
@@ -320,7 +320,7 @@ export const DemoRegister: React.FC = () => {
           <AuthShell title="Create your account" sub="Already have an account? Sign in, How it works">
             <div style={{display: 'flex', gap: 12, marginBottom: 14}}>
               {[['Register a school', 'For owners and administrators', true], ["I'm a parent", 'To pay and track fees', false]].map(([a, b, on]) => (
-                <div key={a as string} style={{flex: 1, border: `2px solid ${on ? G.blue : G.g200}`, background: on ? '#eff6ff' : C.white, borderRadius: 12, padding: '10px 16px'}}>
+                <div key={a as string} style={{flex: 1, border: `2px solid ${on ? G.blue : G.g200}`, background: on ? '#eef2fb' : C.white, borderRadius: 12, padding: '10px 16px'}}>
                   <div style={{fontSize: 21, fontWeight: 700}}>{a}</div>
                   <div style={{fontSize: 16, color: G.g500}}>{b}</div>
                 </div>

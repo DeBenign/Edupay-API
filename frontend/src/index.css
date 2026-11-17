@@ -16,11 +16,11 @@
   .badge-overpaid{ @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-50 text-purple-700 border border-purple-200; }
 
   /* Form input */
-  .input { @apply w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all placeholder:text-gray-400 bg-white; }
+  .input { @apply w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#0DFF63] focus:border-transparent transition-all placeholder:text-gray-400 bg-white; }
   .input-error { @apply border-red-300 focus:ring-red-500; }
 
   /* Button variants */
-  .btn-primary   { @apply inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed; }
+  .btn-primary   { @apply inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-[#0DFF63] focus:ring-offset-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed; }
   .btn-secondary { @apply inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-white text-gray-700 text-sm font-medium rounded-lg border border-gray-200 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-300 transition-all; }
   .btn-danger    { @apply inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-all; }
   .btn-ghost     { @apply inline-flex items-center justify-center gap-2 px-3 py-2 text-gray-600 text-sm font-medium rounded-lg hover:bg-gray-100 transition-all; }

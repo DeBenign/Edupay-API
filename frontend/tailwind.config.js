@@ -4,15 +4,29 @@ export default {
   theme: {
     extend: {
       colors: {
+        // EduPay logo colours: navy #071D49, green #0DFF63
+        logo: { navy: '#071D49', navy2: '#0A2A6B', green: '#0DFF63', green2: '#0AD654' },
+        blue: {
+          50:  '#eef2fb',
+          100: '#dbe4f5',
+          200: '#b8c8e8',
+          300: '#8aa3d4',
+          400: '#0AD654',
+          500: '#0DFF63',
+          600: '#071D49',
+          700: '#04112D',
+          800: '#030c20',
+          900: '#020816',
+        },
         brand: {
-          50:  '#eef5ff',
-          100: '#d9e8ff',
-          200: '#bcd4fe',
-          400: '#6da4fc',
-          500: '#4285f4',
-          600: '#2563eb',
-          700: '#1d4ed8',
-          900: '#1e3a8a',
+          50:  '#eef2fb',
+          100: '#dbe4f5',
+          200: '#b8c8e8',
+          400: '#0AD654',
+          500: '#0DFF63',
+          600: '#071D49',
+          700: '#04112D',
+          900: '#020816',
         },
         // Status colors — payment states
         paid:    { bg: '#f0fdf4', text: '#15803d', border: '#86efac' },

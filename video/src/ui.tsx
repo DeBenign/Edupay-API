@@ -58,7 +58,7 @@ export const Stage: React.FC<{children: React.ReactNode}> = ({children}) => {
           borderRadius: '50%',
           left: -250 + drift,
           top: -300,
-          background: `radial-gradient(circle, ${C.brand}55 0%, transparent 65%)`,
+          background: `radial-gradient(circle, ${C.brandLight}22 0%, transparent 65%)`,
         }}
       />
       <div

@@ -112,7 +112,7 @@ export const Meet: React.FC = () => {
 const Step: React.FC<{n: number; title: string; body: string; at: number}> = ({n, title, body, at}) => (
   <Reveal at={at} style={{flex: 1}}>
     <Card style={{height: '100%'}}>
-      <div style={{width: 56, height: 56, borderRadius: 28, background: C.brand, color: C.white, fontSize: 30, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center'}}>{n}</div>
+      <div style={{width: 56, height: 56, borderRadius: 28, background: C.brandLight, color: C.navy, fontSize: 30, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center'}}>{n}</div>
       <div style={{fontSize: 38, fontWeight: 800, marginTop: 18}}>{title}</div>
       <div style={{fontSize: 28, color: C.muted, marginTop: 10, lineHeight: 1.35, fontWeight: 500}}>{body}</div>
     </Card>
@@ -274,7 +274,7 @@ export const Cta: React.FC = () => {
       <div style={{display: 'flex', flexDirection: 'column', alignItems: v ? 'flex-start' : 'center', gap: 26, textAlign: v ? 'left' : 'center'}}>
         <Reveal at={0.2} from="scale"><Logo size={150} /></Reveal>
         <Reveal at={0.7}><div style={{fontSize: v ? 104 : 108, fontWeight: 800, letterSpacing: -3, lineHeight: 1.05}}>Know who paid.<br />Instantly.</div></Reveal>
-        <Reveal at={1.6}><Pill bg={C.brand} fg={C.white} size={40}>Free 90-day pilot for your school</Pill></Reveal>
+        <Reveal at={1.6}><Pill bg={C.brandLight} fg={C.navy} size={40}>Free 90-day pilot for your school</Pill></Reveal>
         <Reveal at={2.6}>
           <div style={{fontSize: 36, color: C.sky, fontWeight: 600, lineHeight: 1.5}}>
             {CONTACT.website}<br />{CONTACT.phone}<br />{CONTACT.email}
