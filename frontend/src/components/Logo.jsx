@@ -1,8 +1,5 @@
 // src/components/Logo.jsx: the EduPay logo. The files live in /public:
-//   horizontal  logo-horizontal.png  mark + wordmark, light backgrounds (sidebar, nav bars, auth pages)
-//   full        logo-full.png        mark + wordmark + tagline, light backgrounds (sign-in and register)
-//   icon        logo-icon.png        mark only, light backgrounds
-//   icon-dark   logo-icon-dark.png   mark only, DARK backgrounds (white base, so it stays visible)
+
 const FILES = {
   horizontal:  { src: '/logo-horizontal.png', ratio: 814 / 240 },
   full:        { src: '/logo-full.png',       ratio: 1022 / 369 },
